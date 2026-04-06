@@ -36,10 +36,13 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
+  // 直接检查 localStorage 中的 token，确保在 store 初始化之前也能正确判断登录状态
+  const token = localStorage.getItem('token')
+  const isLoggedIn = !!token
   
-  if (to.meta.requiresAuth && !userStore.isLoggedIn) {
+  if (to.meta.requiresAuth && !isLoggedIn) {
     next('/login')
-  } else if (to.path === '/login' && userStore.isLoggedIn) {
+  } else if (to.path === '/login' && isLoggedIn) {
     next('/')
   } else {
     next()

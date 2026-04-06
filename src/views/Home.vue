@@ -2,7 +2,7 @@
   <div class="home-container">
     <h2 class="page-title">收支统计</h2>
 
-    <div v-loading="loading" class="statistics-grid">
+    <div v-loading="accountingStore.loading" class="statistics-grid">
       <!-- 总收入 -->
       <el-card class="stat-card income-card" shadow="hover">
         <div class="stat-content">
@@ -11,7 +11,7 @@
           </div>
           <div class="stat-info">
             <div class="stat-label">总收入</div>
-            <div class="stat-value income-value">¥{{ formatMoney(statistics.totalIncome) }}</div>
+            <div class="stat-value income-value">¥{{ formatMoney(accountingStore.statistics.totalIncome) }}</div>
           </div>
         </div>
       </el-card>
@@ -24,7 +24,7 @@
           </div>
           <div class="stat-info">
             <div class="stat-label">总支出</div>
-            <div class="stat-value expense-value">¥{{ formatMoney(statistics.totalExpense) }}</div>
+            <div class="stat-value expense-value">¥{{ formatMoney(accountingStore.statistics.totalExpense) }}</div>
           </div>
         </div>
       </el-card>
@@ -37,8 +37,8 @@
           </div>
           <div class="stat-info">
             <div class="stat-label">余额</div>
-            <div class="stat-value" :class="statistics.balance >= 0 ? 'income-value' : 'expense-value'">
-              ¥{{ formatMoney(statistics.balance) }}
+            <div class="stat-value" :class="accountingStore.statistics.balance >= 0 ? 'income-value' : 'expense-value'">
+              ¥{{ formatMoney(accountingStore.statistics.balance) }}
             </div>
           </div>
         </div>
@@ -53,10 +53,10 @@
           <div class="stat-info">
             <div class="stat-label">收支笔数</div>
             <div class="stat-value count-value">
-              {{ statistics.incomeCount + statistics.expenseCount }} 笔
+              {{ accountingStore.statistics.incomeCount + accountingStore.statistics.expenseCount }} 笔
             </div>
             <div class="stat-detail">
-              收入 {{ statistics.incomeCount }} 笔 / 支出 {{ statistics.expenseCount }} 笔
+              收入 {{ accountingStore.statistics.incomeCount }} 笔 / 支出 {{ accountingStore.statistics.expenseCount }} 笔
             </div>
           </div>
         </div>
@@ -73,7 +73,7 @@
           </el-button>
         </div>
       </template>
-      <el-table :data="recentRecords" style="width: 100%">
+      <el-table :data="accountingStore.recentRecords" style="width: 100%">
         <el-table-column prop="date" label="日期" width="120" />
         <el-table-column prop="category" label="分类" width="100" />
         <el-table-column label="类型" width="80">
@@ -97,52 +97,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { getStatistics, getRecords } from '@/api/accounting'
+import { onMounted } from 'vue'
+import { useAccountingStore } from '@/stores/accounting'
 import { Money, Wallet, Document, ArrowRight } from '@element-plus/icons-vue'
 
-const loading = ref(false)
-const statistics = ref({
-  totalIncome: 0,
-  totalExpense: 0,
-  balance: 0,
-  incomeCount: 0,
-  expenseCount: 0
-})
-const recentRecords = ref([])
+const accountingStore = useAccountingStore()
 
 const formatMoney = (amount) => {
   return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const fetchStatistics = async () => {
-  loading.value = true
-  try {
-    const res = await getStatistics()
-    if (res.code === 200) {
-      statistics.value = res.data
-    }
-  } catch (error) {
-    console.error('获取统计失败:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-const fetchRecentRecords = async () => {
-  try {
-    const res = await getRecords({ limit: 5 })
-    if (res.code === 200) {
-      recentRecords.value = res.data.list.slice(0, 5)
-    }
-  } catch (error) {
-    console.error('获取最近记录失败:', error)
-  }
-}
-
 onMounted(() => {
-  fetchStatistics()
-  fetchRecentRecords()
+  accountingStore.fetchStatistics()
+  accountingStore.fetchRecords()
 })
 </script>
 
