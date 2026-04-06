@@ -54,20 +54,42 @@ export const useAccountingStore = defineStore('accounting', () => {
   const fetchRecords = async (params = {}) => {
     loading.value = true
     try {
-      const res = await getRecords(params)
+      const mergedParams = {
+        type: params.type !== undefined ? params.type : filterState.value.type,
+        startDate: params.startDate !== undefined ? params.startDate : filterState.value.startDate,
+        endDate: params.endDate !== undefined ? params.endDate : filterState.value.endDate
+      }
+      const res = await getRecords(mergedParams)
       if (res.code === 200) {
         records.value = res.data.list.sort((a, b) => new Date(b.date) - new Date(a.date))
         statistics.value = calculateStatistics(records.value)
         filterState.value = {
-          type: params.type || '',
-          startDate: params.startDate || '',
-          endDate: params.endDate || ''
+          type: mergedParams.type,
+          startDate: mergedParams.startDate,
+          endDate: mergedParams.endDate
         }
       }
     } catch (error) {
       console.error('获取记录失败:', error)
     } finally {
       loading.value = false
+    }
+  }
+
+  const reset = () => {
+    statistics.value = {
+      totalIncome: 0,
+      totalExpense: 0,
+      balance: 0,
+      incomeCount: 0,
+      expenseCount: 0
+    }
+    records.value = []
+    loading.value = false
+    filterState.value = {
+      type: '',
+      startDate: '',
+      endDate: ''
     }
   }
 
@@ -116,6 +138,7 @@ export const useAccountingStore = defineStore('accounting', () => {
     fetchRecords,
     addNewRecord,
     updateExistingRecord,
-    deleteExistingRecord
+    deleteExistingRecord,
+    reset
   }
 })
