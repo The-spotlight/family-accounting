@@ -59,9 +59,9 @@ export const useAccountingStore = defineStore('accounting', () => {
         records.value = res.data.list.sort((a, b) => new Date(b.date) - new Date(a.date))
         statistics.value = calculateStatistics(records.value)
         filterState.value = {
-          type: params.type || '',
-          startDate: params.startDate || '',
-          endDate: params.endDate || ''
+          type: params.type !== undefined ? params.type : filterState.value.type,
+          startDate: params.startDate !== undefined ? params.startDate : filterState.value.startDate,
+          endDate: params.endDate !== undefined ? params.endDate : filterState.value.endDate
         }
       }
     } catch (error) {
@@ -107,6 +107,22 @@ export const useAccountingStore = defineStore('accounting', () => {
     }
   }
 
+  const reset = () => {
+    statistics.value = {
+      totalIncome: 0,
+      totalExpense: 0,
+      balance: 0,
+      incomeCount: 0,
+      expenseCount: 0
+    }
+    records.value = []
+    filterState.value = {
+      type: '',
+      startDate: '',
+      endDate: ''
+    }
+  }
+
   return {
     statistics,
     records,
@@ -116,6 +132,7 @@ export const useAccountingStore = defineStore('accounting', () => {
     fetchRecords,
     addNewRecord,
     updateExistingRecord,
-    deleteExistingRecord
+    deleteExistingRecord,
+    reset
   }
 })

@@ -52,6 +52,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useAccountingStore } from '@/stores/accounting'
 import { ElMessageBox } from 'element-plus'
 import {
   Wallet,
@@ -64,6 +65,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const accountingStore = useAccountingStore()
 
 const activeMenu = computed(() => route.path)
 
@@ -80,6 +82,7 @@ const handleCommand = async (command) => {
         type: 'warning'
       })
       userStore.logout()
+      accountingStore.reset()
       router.push('/login')
     } catch {
       // 用户取消

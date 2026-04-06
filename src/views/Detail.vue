@@ -221,7 +221,7 @@ const handleDelete = async (row) => {
     ElMessage.success('删除成功')
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      // 错误提示已在 Store 层处理，无需重复提示
     }
   }
 }
@@ -240,7 +240,7 @@ const handleSubmit = async () => {
           await accountingStore.addNewRecord(recordForm)
           ElMessage.success('添加成功')
         }
-        showAddDialog.value = false
+        handleDialogClose()
       } finally {
         submitting.value = false
       }
@@ -249,6 +249,7 @@ const handleSubmit = async () => {
 }
 
 const handleDialogClose = () => {
+  showAddDialog.value = false
   editingRecord.value = null
   if (recordFormRef.value) {
     recordFormRef.value.resetFields()
