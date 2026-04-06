@@ -3,7 +3,6 @@
     <h2 class="page-title">收支统计</h2>
 
     <div v-loading="loading" class="statistics-grid">
-      <!-- 总收入 -->
       <el-card class="stat-card income-card" shadow="hover">
         <div class="stat-content">
           <div class="stat-icon income-icon">
@@ -16,7 +15,6 @@
         </div>
       </el-card>
 
-      <!-- 总支出 -->
       <el-card class="stat-card expense-card" shadow="hover">
         <div class="stat-content">
           <div class="stat-icon expense-icon">
@@ -29,7 +27,6 @@
         </div>
       </el-card>
 
-      <!-- 余额 -->
       <el-card class="stat-card balance-card" shadow="hover">
         <div class="stat-content">
           <div class="stat-icon balance-icon">
@@ -44,7 +41,6 @@
         </div>
       </el-card>
 
-      <!-- 收支笔数 -->
       <el-card class="stat-card count-card" shadow="hover">
         <div class="stat-content">
           <div class="stat-icon count-icon">
@@ -63,7 +59,6 @@
       </el-card>
     </div>
 
-    <!-- 最近记录 -->
     <el-card class="recent-records" shadow="hover">
       <template #header>
         <div class="card-header">
@@ -97,52 +92,22 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { getStatistics, getRecords } from '@/api/accounting'
+import { onMounted, computed } from 'vue'
+import { useAccountingStore } from '@/stores/accounting'
 import { Money, Wallet, Document, ArrowRight } from '@element-plus/icons-vue'
 
-const loading = ref(false)
-const statistics = ref({
-  totalIncome: 0,
-  totalExpense: 0,
-  balance: 0,
-  incomeCount: 0,
-  expenseCount: 0
-})
-const recentRecords = ref([])
+const accountingStore = useAccountingStore()
+
+const loading = computed(() => accountingStore.loading)
+const statistics = computed(() => accountingStore.statistics)
+const recentRecords = computed(() => accountingStore.records.slice(0, 5))
 
 const formatMoney = (amount) => {
   return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const fetchStatistics = async () => {
-  loading.value = true
-  try {
-    const res = await getStatistics()
-    if (res.code === 200) {
-      statistics.value = res.data
-    }
-  } catch (error) {
-    console.error('获取统计失败:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-const fetchRecentRecords = async () => {
-  try {
-    const res = await getRecords({ limit: 5 })
-    if (res.code === 200) {
-      recentRecords.value = res.data.list.slice(0, 5)
-    }
-  } catch (error) {
-    console.error('获取最近记录失败:', error)
-  }
-}
-
 onMounted(() => {
-  fetchStatistics()
-  fetchRecentRecords()
+  accountingStore.fetchRecords()
 })
 </script>
 

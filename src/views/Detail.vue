@@ -8,7 +8,6 @@
       </el-button>
     </div>
 
-    <!-- 筛选条件 -->
     <el-card class="filter-card" shadow="hover">
       <el-form :model="filterForm" inline>
         <el-form-item label="类型">
@@ -45,7 +44,6 @@
       </el-form>
     </el-card>
 
-    <!-- 记录列表 -->
     <el-card class="table-card" shadow="hover">
       <el-table
         v-loading="loading"
@@ -83,7 +81,6 @@
       </el-table>
     </el-card>
 
-    <!-- 添加/编辑对话框 -->
     <el-dialog
       v-model="showAddDialog"
       :title="editingRecord ? '编辑记录' : '添加记录'"
@@ -145,17 +142,19 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { getRecords, addRecord, updateRecord, deleteRecord } from '@/api/accounting'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { useAccountingStore } from '@/stores/accounting'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 
-const loading = ref(false)
+const accountingStore = useAccountingStore()
+
+const loading = computed(() => accountingStore.loading)
 const submitting = ref(false)
 const showAddDialog = ref(false)
 const editingRecord = ref(null)
 const recordFormRef = ref(null)
-const recordList = ref([])
+const recordList = computed(() => accountingStore.records)
 
 const filterForm = reactive({
   type: '',
@@ -182,29 +181,15 @@ const formatMoney = (amount) => {
   return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const fetchRecords = async () => {
-  loading.value = true
-  try {
-    const res = await getRecords(filterForm)
-    if (res.code === 200) {
-      recordList.value = res.data.list
-    }
-  } catch (error) {
-    ElMessage.error('获取记录失败')
-  } finally {
-    loading.value = false
-  }
-}
-
 const handleSearch = () => {
-  fetchRecords()
+  accountingStore.fetchRecords(filterForm)
 }
 
 const handleReset = () => {
   filterForm.type = ''
   filterForm.startDate = ''
   filterForm.endDate = ''
-  fetchRecords()
+  accountingStore.fetchRecords()
 }
 
 const handleEdit = (row) => {
@@ -226,11 +211,8 @@ const handleDelete = async (row) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const res = await deleteRecord(row.id)
-    if (res.code === 200) {
-      ElMessage.success('删除成功')
-      fetchRecords()
-    }
+    await accountingStore.deleteExistingRecord(row.id)
+    ElMessage.success('删除成功')
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
@@ -245,17 +227,14 @@ const handleSubmit = async () => {
     if (valid) {
       submitting.value = true
       try {
-        let res
         if (editingRecord.value) {
-          res = await updateRecord(editingRecord.value.id, recordForm)
+          await accountingStore.updateExistingRecord(editingRecord.value.id, recordForm)
+          ElMessage.success('更新成功')
         } else {
-          res = await addRecord(recordForm)
+          await accountingStore.addNewRecord(recordForm)
+          ElMessage.success('添加成功')
         }
-        if (res.code === 200) {
-          ElMessage.success(editingRecord.value ? '更新成功' : '添加成功')
-          showAddDialog.value = false
-          fetchRecords()
-        }
+        showAddDialog.value = false
       } catch (error) {
         ElMessage.error(error.message || '操作失败')
       } finally {
@@ -267,6 +246,9 @@ const handleSubmit = async () => {
 
 const handleDialogClose = () => {
   editingRecord.value = null
+  if (recordFormRef.value) {
+    recordFormRef.value.resetFields()
+  }
   Object.assign(recordForm, {
     type: 'expense',
     category: '',
@@ -274,11 +256,10 @@ const handleDialogClose = () => {
     date: new Date().toISOString().split('T')[0],
     remark: ''
   })
-  recordFormRef.value?.clearValidate()
 }
 
 onMounted(() => {
-  fetchRecords()
+  accountingStore.fetchRecords()
 })
 </script>
 
