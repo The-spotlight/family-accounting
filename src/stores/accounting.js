@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { ElMessage } from 'element-plus'
 import { getStatistics, getRecords, addRecord, updateRecord, deleteRecord } from '@/api/accounting'
 
 export const useAccountingStore = defineStore('accounting', () => {
@@ -13,6 +14,12 @@ export const useAccountingStore = defineStore('accounting', () => {
   
   const records = ref([])
   const loading = ref(false)
+  
+  const filterState = ref({
+    type: '',
+    startDate: '',
+    endDate: ''
+  })
 
   const calculateStatistics = (recordList) => {
     const totalIncome = recordList
@@ -49,8 +56,13 @@ export const useAccountingStore = defineStore('accounting', () => {
     try {
       const res = await getRecords(params)
       if (res.code === 200) {
-        records.value = res.data.list
+        records.value = res.data.list.sort((a, b) => new Date(b.date) - new Date(a.date))
         statistics.value = calculateStatistics(records.value)
+        filterState.value = {
+          type: params.type || '',
+          startDate: params.startDate || '',
+          endDate: params.endDate || ''
+        }
       }
     } catch (error) {
       console.error('获取记录失败:', error)
@@ -63,11 +75,11 @@ export const useAccountingStore = defineStore('accounting', () => {
     try {
       const res = await addRecord(record)
       if (res.code === 200) {
-        await fetchRecords()
+        await fetchRecords(filterState.value)
         return res
       }
     } catch (error) {
-      throw error
+      ElMessage.error(error.message || '添加失败')
     }
   }
 
@@ -75,11 +87,11 @@ export const useAccountingStore = defineStore('accounting', () => {
     try {
       const res = await updateRecord(id, record)
       if (res.code === 200) {
-        await fetchRecords()
+        await fetchRecords(filterState.value)
         return res
       }
     } catch (error) {
-      throw error
+      ElMessage.error(error.message || '更新失败')
     }
   }
 
@@ -87,11 +99,11 @@ export const useAccountingStore = defineStore('accounting', () => {
     try {
       const res = await deleteRecord(id)
       if (res.code === 200) {
-        await fetchRecords()
+        await fetchRecords(filterState.value)
         return res
       }
     } catch (error) {
-      throw error
+      ElMessage.error(error.message || '删除失败')
     }
   }
 
@@ -99,6 +111,7 @@ export const useAccountingStore = defineStore('accounting', () => {
     statistics,
     records,
     loading,
+    filterState,
     fetchStatistics,
     fetchRecords,
     addNewRecord,
