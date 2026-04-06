@@ -48,8 +48,8 @@
     <!-- 记录列表 -->
     <el-card class="table-card" shadow="hover">
       <el-table
-        v-loading="loading"
-        :data="recordList"
+        v-loading="accountingStore.loading"
+        :data="accountingStore.records"
         style="width: 100%"
         stripe
       >
@@ -146,16 +146,15 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { getRecords, addRecord, updateRecord, deleteRecord } from '@/api/accounting'
+import { useAccountingStore } from '@/stores/accounting'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 
-const loading = ref(false)
+const accountingStore = useAccountingStore()
 const submitting = ref(false)
 const showAddDialog = ref(false)
 const editingRecord = ref(null)
 const recordFormRef = ref(null)
-const recordList = ref([])
 
 const filterForm = reactive({
   type: '',
@@ -183,17 +182,7 @@ const formatMoney = (amount) => {
 }
 
 const fetchRecords = async () => {
-  loading.value = true
-  try {
-    const res = await getRecords(filterForm)
-    if (res.code === 200) {
-      recordList.value = res.data.list
-    }
-  } catch (error) {
-    ElMessage.error('获取记录失败')
-  } finally {
-    loading.value = false
-  }
+  await accountingStore.fetchRecords(filterForm)
 }
 
 const handleSearch = () => {
@@ -226,11 +215,8 @@ const handleDelete = async (row) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const res = await deleteRecord(row.id)
-    if (res.code === 200) {
-      ElMessage.success('删除成功')
-      fetchRecords()
-    }
+    await accountingStore.deleteExistingRecord(row.id)
+    ElMessage.success('删除成功')
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
@@ -245,17 +231,15 @@ const handleSubmit = async () => {
     if (valid) {
       submitting.value = true
       try {
-        let res
         if (editingRecord.value) {
-          res = await updateRecord(editingRecord.value.id, recordForm)
+          await accountingStore.updateExistingRecord(editingRecord.value.id, recordForm)
         } else {
-          res = await addRecord(recordForm)
+          await accountingStore.addNewRecord(recordForm)
         }
-        if (res.code === 200) {
-          ElMessage.success(editingRecord.value ? '更新成功' : '添加成功')
-          showAddDialog.value = false
-          fetchRecords()
-        }
+        ElMessage.success(editingRecord.value ? '更新成功' : '添加成功')
+        showAddDialog.value = false
+        // 确保表单字段彻底清理
+        handleDialogClose()
       } catch (error) {
         ElMessage.error(error.message || '操作失败')
       } finally {
@@ -267,6 +251,7 @@ const handleSubmit = async () => {
 
 const handleDialogClose = () => {
   editingRecord.value = null
+  // 彻底重置表单字段
   Object.assign(recordForm, {
     type: 'expense',
     category: '',
@@ -274,7 +259,8 @@ const handleDialogClose = () => {
     date: new Date().toISOString().split('T')[0],
     remark: ''
   })
-  recordFormRef.value?.clearValidate()
+  // 清除表单验证状态
+  recordFormRef.value?.resetFields()
 }
 
 onMounted(() => {
