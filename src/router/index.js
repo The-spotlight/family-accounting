@@ -37,9 +37,12 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   
-  if (to.meta.requiresAuth && !userStore.isLoggedIn) {
+  const token = localStorage.getItem('token')
+  const isLoggedIn = !!token
+  
+  if (to.meta.requiresAuth && !isLoggedIn) {
     next('/login')
-  } else if (to.path === '/login' && userStore.isLoggedIn) {
+  } else if (to.path === '/login' && isLoggedIn) {
     next('/')
   } else {
     next()
