@@ -220,8 +220,8 @@ const handleDelete = async (row) => {
     await accountingStore.deleteExistingRecord(row.id)
     ElMessage.success('删除成功')
   } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+    if (error === 'cancel') {
+      return
     }
   }
 }
@@ -240,7 +240,7 @@ const handleSubmit = async () => {
           await accountingStore.addNewRecord(recordForm)
           ElMessage.success('添加成功')
         }
-        showAddDialog.value = false
+        handleDialogClose()
       } finally {
         submitting.value = false
       }
