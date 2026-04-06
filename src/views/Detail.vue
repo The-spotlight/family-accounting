@@ -9,9 +9,9 @@
     </div>
 
     <el-card class="filter-card" shadow="hover">
-      <el-form :model="filterForm" inline>
+      <el-form :model="accountingStore.filterState" inline>
         <el-form-item label="类型">
-          <el-select v-model="filterForm.type" placeholder="全部" clearable style="width: 120px">
+          <el-select v-model="accountingStore.filterState.type" placeholder="全部" clearable style="width: 120px">
             <el-option label="全部" value="" />
             <el-option label="收入" value="income" />
             <el-option label="支出" value="expense" />
@@ -19,7 +19,7 @@
         </el-form-item>
         <el-form-item label="开始日期">
           <el-date-picker
-            v-model="filterForm.startDate"
+            v-model="accountingStore.filterState.startDate"
             type="date"
             placeholder="选择日期"
             format="YYYY-MM-DD"
@@ -29,7 +29,7 @@
         </el-form-item>
         <el-form-item label="结束日期">
           <el-date-picker
-            v-model="filterForm.endDate"
+            v-model="accountingStore.filterState.endDate"
             type="date"
             placeholder="选择日期"
             format="YYYY-MM-DD"
@@ -156,12 +156,6 @@ const editingRecord = ref(null)
 const recordFormRef = ref(null)
 const recordList = computed(() => accountingStore.records)
 
-const filterForm = reactive({
-  type: '',
-  startDate: '',
-  endDate: ''
-})
-
 const recordForm = reactive({
   type: 'expense',
   category: '',
@@ -182,13 +176,13 @@ const formatMoney = (amount) => {
 }
 
 const handleSearch = () => {
-  accountingStore.fetchRecords(filterForm)
+  accountingStore.fetchRecords(accountingStore.filterState)
 }
 
 const handleReset = () => {
-  filterForm.type = ''
-  filterForm.startDate = ''
-  filterForm.endDate = ''
+  accountingStore.filterState.type = ''
+  accountingStore.filterState.startDate = ''
+  accountingStore.filterState.endDate = ''
   accountingStore.fetchRecords()
 }
 
