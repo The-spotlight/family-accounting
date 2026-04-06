@@ -162,6 +162,12 @@ const filterForm = reactive({
   endDate: ''
 })
 
+const loadFilterState = () => {
+  filterForm.type = accountingStore.filterState.type
+  filterForm.startDate = accountingStore.filterState.startDate
+  filterForm.endDate = accountingStore.filterState.endDate
+}
+
 const recordForm = reactive({
   type: 'expense',
   category: '',
@@ -235,8 +241,6 @@ const handleSubmit = async () => {
           ElMessage.success('添加成功')
         }
         showAddDialog.value = false
-      } catch (error) {
-        ElMessage.error(error.message || '操作失败')
       } finally {
         submitting.value = false
       }
@@ -259,7 +263,8 @@ const handleDialogClose = () => {
 }
 
 onMounted(() => {
-  accountingStore.fetchRecords()
+  loadFilterState()
+  accountingStore.fetchRecords(filterForm)
 })
 </script>
 
