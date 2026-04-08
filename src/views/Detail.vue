@@ -62,11 +62,21 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="金额" width="150">
+        <el-table-column label="金额" width="180">
           <template #default="{ row }">
-            <span :class="row.type === 'income' ? 'income-text' : 'expense-text'">
-              {{ row.type === 'income' ? '+' : '-' }}¥{{ formatMoney(row.amount) }}
-            </span>
+            <div class="amount-wrapper">
+              <span :class="getAmountClass(row)">
+                {{ row.type === 'income' ? '+' : '-' }}¥{{ formatMoney(row.amount) }}
+              </span>
+              <span v-if="getBudgetWarning(row)" class="budget-warning">
+                <el-icon v-if="getBudgetWarning(row) === 'exceeded'" class="warning-icon exceeded">
+                  <WarningFilled />
+                </el-icon>
+                <el-icon v-else-if="getBudgetWarning(row) === 'warning'" class="warning-icon warning">
+                  <Warning />
+                </el-icon>
+              </span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" />
@@ -145,10 +155,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { getRecords, addRecord, updateRecord, deleteRecord } from '@/api/accounting'
+import { useBudgetStore } from '@/stores/budget'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Warning, WarningFilled } from '@element-plus/icons-vue'
+
+const budgetStore = useBudgetStore()
+const budgetUsage = computed(() => budgetStore.budgetUsage)
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -180,6 +194,52 @@ const recordRules = {
 
 const formatMoney = (amount) => {
   return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const getRecordMonth = (date) => {
+  const d = new Date(date)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+const getCategoryBudgetStatus = (category, month) => {
+  return budgetUsage.value.find(
+    u => u.category === category && u.month === month
+  )
+}
+
+const getAmountClass = (row) => {
+  if (row.type === 'income') {
+    return 'income-text'
+  }
+  
+  const month = getRecordMonth(row.date)
+  const budgetStatus = getCategoryBudgetStatus(row.category, month)
+  
+  if (budgetStatus) {
+    if (budgetStatus.status === 'exceeded') {
+      return 'expense-exceeded'
+    }
+    if (budgetStatus.status === 'warning') {
+      return 'expense-warning'
+    }
+  }
+  
+  return 'expense-text'
+}
+
+const getBudgetWarning = (row) => {
+  if (row.type === 'income') {
+    return null
+  }
+  
+  const month = getRecordMonth(row.date)
+  const budgetStatus = getCategoryBudgetStatus(row.category, month)
+  
+  if (budgetStatus) {
+    return budgetStatus.status
+  }
+  
+  return null
 }
 
 const fetchRecords = async () => {
@@ -279,6 +339,7 @@ const handleDialogClose = () => {
 
 onMounted(() => {
   fetchRecords()
+  budgetStore.fetchBudgetUsage()
 })
 </script>
 
@@ -318,5 +379,38 @@ onMounted(() => {
 .expense-text {
   color: #f56c6c;
   font-weight: 600;
+}
+
+.expense-warning {
+  color: #e6a23c;
+  font-weight: 600;
+}
+
+.expense-exceeded {
+  color: #f56c6c;
+  font-weight: 600;
+}
+
+.amount-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.budget-warning {
+  display: inline-flex;
+  align-items: center;
+}
+
+.warning-icon {
+  font-size: 16px;
+  
+  &.warning {
+    color: #e6a23c;
+  }
+  
+  &.exceeded {
+    color: #f56c6c;
+  }
 }
 </style>
