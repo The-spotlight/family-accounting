@@ -63,6 +63,39 @@
       </el-card>
     </div>
 
+    <!-- 预算概览 -->
+    <el-card class="budget-overview" shadow="hover" v-if="budgetUsage.length > 0">
+      <template #header>
+        <div class="card-header">
+          <span>预算概览</span>
+          <el-button type="primary" link @click="$router.push('/budget')">
+            管理预算 <el-icon><ArrowRight /></el-icon>
+          </el-button>
+        </div>
+      </template>
+      <div class="budget-list">
+        <div v-for="budget in budgetUsage" :key="budget.id" class="budget-item">
+          <div class="budget-header">
+            <span class="budget-category">{{ budget.category }}</span>
+            <el-tag :type="getTagType(budget)" size="small">
+              {{ getStatusText(budget) }}
+            </el-tag>
+          </div>
+          <div class="budget-progress">
+            <el-progress
+              :percentage="Math.min(budget.percentage, 100)"
+              :status="getProgressStatus(budget)"
+              :stroke-width="10"
+            />
+          </div>
+          <div class="budget-info">
+            <span class="budget-used">已使用: ¥{{ formatMoney(budget.used) }}</span>
+            <span class="budget-total">预算: ¥{{ formatMoney(budget.amount) }}</span>
+          </div>
+        </div>
+      </div>
+    </el-card>
+
     <!-- 最近记录 -->
     <el-card class="recent-records" shadow="hover">
       <template #header>
@@ -98,7 +131,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getStatistics, getRecords } from '@/api/accounting'
+import { getStatistics, getRecords, getBudgetUsage } from '@/api/accounting'
 import { Money, Wallet, Document, ArrowRight } from '@element-plus/icons-vue'
 
 const loading = ref(false)
@@ -110,6 +143,8 @@ const statistics = ref({
   expenseCount: 0
 })
 const recentRecords = ref([])
+const budgetUsage = ref([])
+const currentMonth = ref(new Date().toISOString().slice(0, 7))
 
 const formatMoney = (amount) => {
   return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -140,9 +175,39 @@ const fetchRecentRecords = async () => {
   }
 }
 
+const fetchBudgetUsage = async () => {
+  try {
+    const res = await getBudgetUsage(currentMonth.value)
+    if (res.code === 200) {
+      budgetUsage.value = res.data
+    }
+  } catch (error) {
+    console.error('获取预算使用情况失败:', error)
+  }
+}
+
+const getProgressStatus = (budget) => {
+  if (budget.status === 'over') return 'exception'
+  if (budget.status === 'warning') return 'warning'
+  return ''
+}
+
+const getTagType = (budget) => {
+  if (budget.status === 'over') return 'danger'
+  if (budget.status === 'warning') return 'warning'
+  return 'success'
+}
+
+const getStatusText = (budget) => {
+  if (budget.status === 'over') return '超支'
+  if (budget.status === 'warning') return '警告'
+  return '正常'
+}
+
 onMounted(() => {
   fetchStatistics()
   fetchRecentRecords()
+  fetchBudgetUsage()
 })
 </script>
 
@@ -259,5 +324,67 @@ onMounted(() => {
 .expense-text {
   color: #f56c6c;
   font-weight: 600;
+}
+
+.budget-overview {
+  border-radius: 12px;
+  margin-bottom: 24px;
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+  }
+
+  .budget-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .budget-item {
+    background: #f5f7fa;
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.3s;
+
+    &:hover {
+      background: #eef2f7;
+      transform: translateY(-2px);
+    }
+
+    .budget-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+
+      .budget-category {
+        font-size: 16px;
+        font-weight: 600;
+        color: #303133;
+      }
+    }
+
+    .budget-progress {
+      margin-bottom: 12px;
+    }
+
+    .budget-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      color: #909399;
+
+      .budget-used {
+        font-weight: 500;
+      }
+
+      .budget-total {
+        font-weight: 500;
+      }
+    }
+  }
 }
 </style>

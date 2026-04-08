@@ -62,11 +62,16 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="金额" width="150">
+        <el-table-column label="金额" width="180">
           <template #default="{ row }">
-            <span :class="row.type === 'income' ? 'income-text' : 'expense-text'">
-              {{ row.type === 'income' ? '+' : '-' }}¥{{ formatMoney(row.amount) }}
-            </span>
+            <div class="amount-container">
+              <span :class="getAmountClass(row)">
+                {{ row.type === 'income' ? '+' : '-' }}¥{{ formatMoney(row.amount) }}
+              </span>
+              <el-icon v-if="getBudgetIcon(row)" :class="getIconClass(row)">
+                <component :is="getBudgetIcon(row)" />
+              </el-icon>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" />
@@ -145,10 +150,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { getRecords, addRecord, updateRecord, deleteRecord } from '@/api/accounting'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { getRecords, addRecord, updateRecord, deleteRecord, getBudgetUsage } from '@/api/accounting'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Warning, CircleClose } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -156,6 +161,8 @@ const showAddDialog = ref(false)
 const editingRecord = ref(null)
 const recordFormRef = ref(null)
 const recordList = ref([])
+const budgetUsage = ref([])
+const currentMonth = ref(new Date().toISOString().slice(0, 7))
 
 const filterForm = reactive({
   type: '',
@@ -180,6 +187,47 @@ const recordRules = {
 
 const formatMoney = (amount) => {
   return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const fetchBudgetUsage = async () => {
+  try {
+    const res = await getBudgetUsage(currentMonth.value)
+    if (res.code === 200) {
+      budgetUsage.value = res.data
+    }
+  } catch (error) {
+    console.error('获取预算使用情况失败:', error)
+  }
+}
+
+const getBudgetStatus = (category) => {
+  const budget = budgetUsage.value.find(b => b.category === category)
+  return budget ? budget.status : 'normal'
+}
+
+const getAmountClass = (row) => {
+  if (row.type === 'income') return 'income-text'
+  
+  const status = getBudgetStatus(row.category)
+  if (status === 'over') return 'amount-over'
+  if (status === 'warning') return 'amount-warning'
+  return 'expense-text'
+}
+
+const getBudgetIcon = (row) => {
+  if (row.type === 'income') return null
+  
+  const status = getBudgetStatus(row.category)
+  if (status === 'over') return CircleClose
+  if (status === 'warning') return Warning
+  return null
+}
+
+const getIconClass = (row) => {
+  const status = getBudgetStatus(row.category)
+  if (status === 'over') return 'icon-over'
+  if (status === 'warning') return 'icon-warning'
+  return ''
 }
 
 const fetchRecords = async () => {
@@ -279,6 +327,7 @@ const handleDialogClose = () => {
 
 onMounted(() => {
   fetchRecords()
+  fetchBudgetUsage()
 })
 </script>
 
@@ -318,5 +367,31 @@ onMounted(() => {
 .expense-text {
   color: #f56c6c;
   font-weight: 600;
+}
+
+.amount-warning {
+  color: #e6a23c;
+  font-weight: 600;
+}
+
+.amount-over {
+  color: #f56c6c;
+  font-weight: 600;
+}
+
+.amount-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.icon-warning {
+  color: #e6a23c;
+  font-size: 16px;
+}
+
+.icon-over {
+  color: #f56c6c;
+  font-size: 16px;
 }
 </style>
