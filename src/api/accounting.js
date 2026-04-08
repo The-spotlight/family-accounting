@@ -3,7 +3,12 @@ import {
   mockGetRecords,
   mockAddRecord,
   mockUpdateRecord,
-  mockDeleteRecord
+  mockDeleteRecord,
+  mockGetBudgets,
+  mockAddBudget,
+  mockUpdateBudget,
+  mockDeleteBudget,
+  mockGetBudgetUsage
 } from '@/utils/mock'
 
 export const getStatistics = () => {
@@ -24,4 +29,24 @@ export const updateRecord = (id, record) => {
 
 export const deleteRecord = (id) => {
   return mockDeleteRecord(id)
+}
+
+export const getBudgets = (params) => {
+  return mockGetBudgets(params)
+}
+
+export const addBudget = (budget) => {
+  return mockAddBudget(budget)
+}
+
+export const updateBudget = (id, budget) => {
+  return mockUpdateBudget(id, budget)
+}
+
+export const deleteBudget = (id) => {
+  return mockDeleteBudget(id)
+}
+
+export const getBudgetUsage = (month) => {
+  return mockGetBudgetUsage(month)
 }
