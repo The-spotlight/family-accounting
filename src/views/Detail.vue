@@ -291,6 +291,7 @@ const handleReset = () => {
 }
 
 const handleSizeChange = (val) => {
+  pageSize.value = val
   currentPage.value = 1
 }
 
