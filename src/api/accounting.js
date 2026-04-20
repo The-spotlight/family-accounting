@@ -8,7 +8,12 @@ import {
   mockAddBudget,
   mockUpdateBudget,
   mockDeleteBudget,
-  mockGetBudgetUsage
+  mockGetBudgetUsage,
+  mockGetCategoryStatistics,
+  mockGetTrendData,
+  mockGetTopCategories,
+  mockGetGrowthRate,
+  mockGetFinancialReportData
 } from '@/utils/mock'
 
 export const getStatistics = () => {
@@ -49,4 +54,24 @@ export const deleteBudget = (id) => {
 
 export const getBudgetUsage = (month) => {
   return mockGetBudgetUsage(month)
+}
+
+export const getCategoryStatistics = (timeDimension, period, type) => {
+  return mockGetCategoryStatistics(timeDimension, period, type)
+}
+
+export const getTrendData = (timeDimension, period) => {
+  return mockGetTrendData(timeDimension, period)
+}
+
+export const getTopCategories = (timeDimension, period, type, limit) => {
+  return mockGetTopCategories(timeDimension, period, type, limit)
+}
+
+export const getGrowthRate = (timeDimension, period) => {
+  return mockGetGrowthRate(timeDimension, period)
+}
+
+export const getFinancialReportData = (timeDimension, period) => {
+  return mockGetFinancialReportData(timeDimension, period)
 }
