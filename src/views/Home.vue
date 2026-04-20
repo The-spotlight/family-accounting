@@ -523,7 +523,6 @@ const updatePieChart = () => {
   }
   
   const categoryData = reportData.value.categoryDetails?.[pieChartType.value]?.categories || []
-  const total = reportData.value.categoryDetails?.[pieChartType.value]?.total || 0
   
   const colors = [
     '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de',
@@ -545,7 +544,19 @@ const updatePieChart = () => {
         fontSize: 12
       }
     },
-    series: [
+    graphic: categoryData.length === 0 ? [
+      {
+        type: 'text',
+        left: 'center',
+        top: 'center',
+        style: {
+          text: '暂无数据',
+          fontSize: 16,
+          fill: '#909399'
+        }
+      }
+    ] : [],
+    series: categoryData.length > 0 ? [
       {
         name: pieChartType.value === 'expense' ? '支出' : '收入',
         type: 'pie',
@@ -570,15 +581,13 @@ const updatePieChart = () => {
         labelLine: {
           show: false
         },
-        data: categoryData.length > 0 
-          ? categoryData.map((item, index) => ({
-              value: item.value,
-              name: item.name,
-              itemStyle: { color: colors[index % colors.length] }
-            }))
-          : [{ value: 1, name: '暂无数据', itemStyle: { color: '#c0c4cc' } }]
+        data: categoryData.map((item, index) => ({
+          value: item.value,
+          name: item.name,
+          itemStyle: { color: colors[index % colors.length] }
+        }))
       }
-    ]
+    ] : []
   }
   
   pieChartInstance.setOption(option, true)
@@ -640,8 +649,9 @@ const updateLineChart = () => {
       boundaryGap: false,
       data: trendData.map(item => item.period),
       axisLabel: {
-        rotate: trendData.length > 12 ? 30 : 0,
-        fontSize: 11
+        rotate: trendData.length > 12 ? 45 : 0,
+        fontSize: 11,
+        interval: trendData.length > 20 ? Math.floor(trendData.length / 10) : 0
       }
     },
     yAxis: {
