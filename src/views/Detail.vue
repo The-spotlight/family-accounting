@@ -49,7 +49,7 @@
     <el-card class="table-card" shadow="hover">
       <el-table
         v-loading="loading"
-        :data="recordList"
+        :data="paginatedRecordList"
         style="width: 100%"
         stripe
       >
@@ -183,6 +183,16 @@ const editingRecord = ref(null)
 const recordFormRef = ref(null)
 const recordList = ref([])
 
+const currentPage = ref(1)
+const pageSize = ref(20)
+const pageSizes = [10, 20, 50]
+
+const paginatedRecordList = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return recordList.value.slice(start, end)
+})
+
 const filterForm = reactive({
   type: '',
   startDate: '',
@@ -260,6 +270,7 @@ const fetchRecords = async () => {
     const res = await getRecords(filterForm)
     if (res.code === 200) {
       recordList.value = res.data.list
+      currentPage.value = 1
     }
   } catch (error) {
     ElMessage.error('获取记录失败')
@@ -277,6 +288,14 @@ const handleReset = () => {
   filterForm.startDate = ''
   filterForm.endDate = ''
   fetchRecords()
+}
+
+const handleSizeChange = (val) => {
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (val) => {
+  currentPage.value = val
 }
 
 const handleEdit = (row) => {
@@ -381,6 +400,12 @@ onMounted(() => {
 
 .table-card {
   border-radius: 12px;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 
 .income-text {
