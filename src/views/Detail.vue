@@ -49,7 +49,7 @@
     <el-card class="table-card" shadow="hover">
       <el-table
         v-loading="loading"
-        :data="recordList"
+        :data="paginatedRecordList"
         style="width: 100%"
         stripe
       >
@@ -62,11 +62,21 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="金额" width="150">
+        <el-table-column label="金额" width="180">
           <template #default="{ row }">
-            <span :class="row.type === 'income' ? 'income-text' : 'expense-text'">
-              {{ row.type === 'income' ? '+' : '-' }}¥{{ formatMoney(row.amount) }}
-            </span>
+            <div class="amount-wrapper">
+              <span :class="getAmountClass(row)">
+                {{ row.type === 'income' ? '+' : '-' }}¥{{ formatMoney(row.amount) }}
+              </span>
+              <span v-if="getBudgetWarning(row)" class="budget-warning">
+                <el-icon v-if="getBudgetWarning(row) === 'exceeded'" class="warning-icon exceeded">
+                  <WarningFilled />
+                </el-icon>
+                <el-icon v-else-if="getBudgetWarning(row) === 'warning'" class="warning-icon warning">
+                  <Warning />
+                </el-icon>
+              </span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" />
@@ -81,6 +91,18 @@
           </template>
         </el-table-column>
       </el-table>
+      
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="pageSizes"
+          :total="recordList.length"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
 
     <!-- 添加/编辑对话框 -->
@@ -145,10 +167,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { getRecords, addRecord, updateRecord, deleteRecord } from '@/api/accounting'
+import { useBudgetStore } from '@/stores/budget'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Warning, WarningFilled } from '@element-plus/icons-vue'
+
+const budgetStore = useBudgetStore()
+const budgetUsage = computed(() => budgetStore.budgetUsage)
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -156,6 +182,16 @@ const showAddDialog = ref(false)
 const editingRecord = ref(null)
 const recordFormRef = ref(null)
 const recordList = ref([])
+
+const currentPage = ref(1)
+const pageSize = ref(20)
+const pageSizes = [10, 20, 50]
+
+const paginatedRecordList = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return recordList.value.slice(start, end)
+})
 
 const filterForm = reactive({
   type: '',
@@ -182,12 +218,59 @@ const formatMoney = (amount) => {
   return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+const getRecordMonth = (date) => {
+  const d = new Date(date)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+const getCategoryBudgetStatus = (category, month) => {
+  return budgetUsage.value.find(
+    u => u.category === category && u.month === month
+  )
+}
+
+const getAmountClass = (row) => {
+  if (row.type === 'income') {
+    return 'income-text'
+  }
+  
+  const month = getRecordMonth(row.date)
+  const budgetStatus = getCategoryBudgetStatus(row.category, month)
+  
+  if (budgetStatus) {
+    if (budgetStatus.status === 'exceeded') {
+      return 'expense-exceeded'
+    }
+    if (budgetStatus.status === 'warning') {
+      return 'expense-warning'
+    }
+  }
+  
+  return 'expense-text'
+}
+
+const getBudgetWarning = (row) => {
+  if (row.type === 'income') {
+    return null
+  }
+  
+  const month = getRecordMonth(row.date)
+  const budgetStatus = getCategoryBudgetStatus(row.category, month)
+  
+  if (budgetStatus) {
+    return budgetStatus.status
+  }
+  
+  return null
+}
+
 const fetchRecords = async () => {
   loading.value = true
   try {
     const res = await getRecords(filterForm)
     if (res.code === 200) {
       recordList.value = res.data.list
+      currentPage.value = 1
     }
   } catch (error) {
     ElMessage.error('获取记录失败')
@@ -205,6 +288,14 @@ const handleReset = () => {
   filterForm.startDate = ''
   filterForm.endDate = ''
   fetchRecords()
+}
+
+const handleSizeChange = (val) => {
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (val) => {
+  currentPage.value = val
 }
 
 const handleEdit = (row) => {
@@ -279,6 +370,7 @@ const handleDialogClose = () => {
 
 onMounted(() => {
   fetchRecords()
+  budgetStore.fetchBudgetUsage()
 })
 </script>
 
@@ -310,6 +402,12 @@ onMounted(() => {
   border-radius: 12px;
 }
 
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
 .income-text {
   color: #67c23a;
   font-weight: 600;
@@ -318,5 +416,38 @@ onMounted(() => {
 .expense-text {
   color: #f56c6c;
   font-weight: 600;
+}
+
+.expense-warning {
+  color: #e6a23c;
+  font-weight: 600;
+}
+
+.expense-exceeded {
+  color: #f56c6c;
+  font-weight: 600;
+}
+
+.amount-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.budget-warning {
+  display: inline-flex;
+  align-items: center;
+}
+
+.warning-icon {
+  font-size: 16px;
+  
+  &.warning {
+    color: #e6a23c;
+  }
+  
+  &.exceeded {
+    color: #f56c6c;
+  }
 }
 </style>
