@@ -91,6 +91,18 @@
           </template>
         </el-table-column>
       </el-table>
+      
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="pageSizes"
+          :total="recordList.length"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
 
     <!-- 添加/编辑对话框 -->
