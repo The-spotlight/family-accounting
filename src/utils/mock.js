@@ -4,6 +4,33 @@ import { ElMessage } from 'element-plus'
 // 模拟延迟
 const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms))
 
+// ==================== 固定种子伪随机数生成器 ====================
+// 确保每次刷新页面生成的数据都是一致的
+
+class SeededRandom {
+  constructor(seed = 12345) {
+    this.state = seed
+  }
+  
+  // Mulberry32 伪随机数生成器
+  next() {
+    let t = this.state += 0x6D2B79F5
+    t = Math.imul(t ^ t >>> 15, t | 1)
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61)
+    return ((t ^ t >>> 14) >>> 0) / 4294967296
+  }
+  
+  // 生成 [min, max) 之间的随机整数
+  nextInt(min, max) {
+    return Math.floor(this.next() * (max - min)) + min
+  }
+  
+  // 生成 [min, max] 之间的随机整数（包含两端）
+  nextIntInclusive(min, max) {
+    return Math.floor(this.next() * (max - min + 1)) + min
+  }
+}
+
 // Mock 用户数据
 const mockUsers = [
   { id: 1, username: 'admin', password: '123456', name: '管理员' },
@@ -14,6 +41,7 @@ const mockUsers = [
 let mockRecords = generateMockRecords()
 
 function generateMockRecords() {
+  const rng = new SeededRandom(12345)
   const records = []
   let id = 1
   
@@ -34,7 +62,7 @@ function generateMockRecords() {
         id: id++,
         type: 'income',
         category: '工资',
-        amount: 8000 + Math.floor(Math.random() * 2000),
+        amount: 8000 + rng.nextInt(0, 2001),
         date: `${year}-${String(month).padStart(2, '0')}-01`,
         remark: `${month}月工资`
       })
@@ -45,54 +73,55 @@ function generateMockRecords() {
           id: id++,
           type: 'income',
           category: '奖金',
-          amount: 5000 + Math.floor(Math.random() * 3000),
+          amount: 5000 + rng.nextInt(0, 3001),
           date: `${year}-${String(month).padStart(2, '0')}-15`,
           remark: `${month === 6 ? '半年' : '年终'}奖`
         })
       }
       
       // 每月随机收入（兼职、投资等）
-      if (Math.random() > 0.5) {
+      if (rng.next() > 0.5) {
         records.push({
           id: id++,
           type: 'income',
-          category: incomeCategories[Math.floor(Math.random() * (incomeCategories.length - 2)) + 2],
-          amount: Math.floor(Math.random() * 2000) + 100,
-          date: `${year}-${String(month).padStart(2, '0')}-${String(Math.floor(Math.random() * 20) + 1).padStart(2, '0')}`,
+          category: incomeCategories[rng.nextInt(2, incomeCategories.length)],
+          amount: rng.nextInt(0, 2001) + 100,
+          date: `${year}-${String(month).padStart(2, '0')}-${String(rng.nextInt(0, 20) + 1).padStart(2, '0')}`,
           remark: '额外收入'
         })
       }
       
       // 每月日常支出
-      for (let i = 0; i < Math.floor(Math.random() * 15) + 10; i++) {
-        const day = Math.floor(Math.random() * daysInMonth) + 1
-        const category = expenseCategories[Math.floor(Math.random() * expenseCategories.length)]
+      const expenseCount = rng.nextInt(0, 15) + 10
+      for (let i = 0; i < expenseCount; i++) {
+        const day = rng.nextInt(0, daysInMonth) + 1
+        const category = expenseCategories[rng.nextInt(0, expenseCategories.length)]
         
         let amount
         switch (category) {
           case '餐饮':
-            amount = Math.floor(Math.random() * 200) + 30
+            amount = rng.nextInt(0, 200) + 30
             break
           case '交通':
-            amount = Math.floor(Math.random() * 100) + 20
+            amount = rng.nextInt(0, 100) + 20
             break
           case '购物':
-            amount = Math.floor(Math.random() * 500) + 100
+            amount = rng.nextInt(0, 500) + 100
             break
           case '娱乐':
-            amount = Math.floor(Math.random() * 300) + 50
+            amount = rng.nextInt(0, 300) + 50
             break
           case '居住':
-            amount = Math.floor(Math.random() * 1000) + 200
+            amount = rng.nextInt(0, 1000) + 200
             break
           case '医疗':
-            amount = Math.floor(Math.random() * 300) + 100
+            amount = rng.nextInt(0, 300) + 100
             break
           case '教育':
-            amount = Math.floor(Math.random() * 500) + 100
+            amount = rng.nextInt(0, 500) + 100
             break
           default:
-            amount = Math.floor(Math.random() * 200) + 50
+            amount = rng.nextInt(0, 200) + 50
         }
         
         records.push({
