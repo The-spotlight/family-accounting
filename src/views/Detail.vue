@@ -41,6 +41,10 @@
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
+          <el-button type="success" @click="handleExportExcel">
+            <el-icon><Document /></el-icon>
+            导出 Excel
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -171,7 +175,8 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { getRecords, addRecord, updateRecord, deleteRecord } from '@/api/accounting'
 import { useBudgetStore } from '@/stores/budget'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Warning, WarningFilled } from '@element-plus/icons-vue'
+import { Plus, Warning, WarningFilled, Document } from '@element-plus/icons-vue'
+import * as XLSX from 'xlsx'
 
 const budgetStore = useBudgetStore()
 const budgetUsage = computed(() => budgetStore.budgetUsage)
@@ -367,6 +372,46 @@ const handleDialogClose = () => {
     remark: ''
   })
   recordFormRef.value?.clearValidate()
+}
+
+const handleExportExcel = () => {
+  if (recordList.value.length === 0) {
+    ElMessage.warning('当前没有数据可导出')
+    return
+  }
+
+  const exportData = recordList.value.map(row => ({
+    日期: row.date,
+    分类: row.category,
+    类型: row.type === 'income' ? '收入' : '支出',
+    金额: row.amount,
+    备注: row.remark || ''
+  }))
+
+  const worksheet = XLSX.utils.json_to_sheet(exportData)
+  
+  worksheet['!cols'] = [
+    { wch: 12 },
+    { wch: 15 },
+    { wch: 8 },
+    { wch: 12 },
+    { wch: 30 }
+  ]
+
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, '收支明细')
+
+  let fileName = '收支明细'
+  if (filterForm.startDate && filterForm.endDate) {
+    fileName = `收支明细_${filterForm.startDate}_${filterForm.endDate}`
+  } else if (filterForm.startDate) {
+    fileName = `收支明细_${filterForm.startDate}_至_至今`
+  } else if (filterForm.endDate) {
+    fileName = `收支明细_至今_至_${filterForm.endDate}`
+  }
+
+  XLSX.writeFile(workbook, `${fileName}.xlsx`)
+  ElMessage.success('导出成功')
 }
 
 onMounted(() => {
