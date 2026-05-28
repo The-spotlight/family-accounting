@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getStatistics, getRecords, addRecord, updateRecord, deleteRecord } from '@/api/accounting'
+import { getStatistics, getRecords, addRecord, updateRecord, deleteRecord, batchUpdateCategory } from '@/api/accounting'
 
 // 默认分类
-const DEFAULT_INCOME_CATEGORIES = [
+export const DEFAULT_INCOME_CATEGORIES = [
   { name: '工资', icon: 'Wallet', color: '#67c23a' },
   { name: '奖金', icon: 'TrophyBase', color: '#e6a23c' },
   { name: '兼职', icon: 'Briefcase', color: '#409eff' },
@@ -12,7 +12,7 @@ const DEFAULT_INCOME_CATEGORIES = [
   { name: '其他', icon: 'MoreFilled', color: '#909399' }
 ]
 
-const DEFAULT_EXPENSE_CATEGORIES = [
+export const DEFAULT_EXPENSE_CATEGORIES = [
   { name: '餐饮', icon: 'Food', color: '#f56c6c' },
   { name: '交通', icon: 'Bicycle', color: '#409eff' },
   { name: '购物', icon: 'ShoppingCart', color: '#e6a23c' },
@@ -267,6 +267,23 @@ export const useAccountingStore = defineStore('accounting', () => {
     }
   }
 
+  // 重命名分类：同步更新所有引用旧名称的记录
+  const renameCategoryInRecords = async (type, oldName, newName) => {
+    if (oldName === newName) return
+    const res = await batchUpdateCategory(type, oldName, newName)
+    if (res.code === 200) {
+      // 本地 records 也要同步，避免页面刷新前显示旧名
+      records.value.forEach(r => {
+        if (r.type === type && r.category === oldName) {
+          r.category = newName
+        }
+      })
+      // 重新统计
+      statistics.value = calculateStatistics(records.value)
+    }
+    return res
+  }
+
   return {
     statistics,
     records,
@@ -289,6 +306,7 @@ export const useAccountingStore = defineStore('accounting', () => {
     addNewRecord,
     updateExistingRecord,
     deleteExistingRecord,
+    renameCategoryInRecords,
     reset
   }
 })

@@ -131,6 +131,7 @@ const accountingStore = useAccountingStore()
 const activeTab = ref('income')
 const showDialog = ref(false)
 const editingIndex = ref(null)
+const editingOriginalName = ref('')
 const editingType = ref('expense')
 const categoryFormRef = ref(null)
 
@@ -170,6 +171,7 @@ const handleEdit = (type, index) => {
   editingIndex.value = index
   const list = type === 'income' ? accountingStore.incomeCategories : accountingStore.expenseCategories
   const cat = list[index]
+  editingOriginalName.value = cat.name
   categoryForm.name = cat.name
   categoryForm.icon = cat.icon
   categoryForm.color = cat.color
@@ -211,32 +213,54 @@ const handleDelete = async (type, index) => {
 
 const handleSubmit = async () => {
   if (!categoryFormRef.value) return
-  await categoryFormRef.value.validate((valid) => {
-    if (valid) {
-      const data = { ...categoryForm }
-      if (editingType.value === 'income') {
-        if (editingIndex.value !== null) {
-          accountingStore.incomeCategories[editingIndex.value] = data
-        } else {
-          accountingStore.incomeCategories.push(data)
-        }
-        accountingStore.saveIncomeCategories()
-      } else {
-        if (editingIndex.value !== null) {
-          accountingStore.expenseCategories[editingIndex.value] = data
-        } else {
-          accountingStore.expenseCategories.push(data)
-        }
-        accountingStore.saveExpenseCategories()
-      }
-      ElMessage.success(editingIndex.value !== null ? '编辑成功' : '添加成功')
+  const valid = await categoryFormRef.value.validate().catch(() => false)
+  if (!valid) return
+
+  const list = editingType.value === 'income'
+    ? accountingStore.incomeCategories
+    : accountingStore.expenseCategories
+
+  if (editingIndex.value !== null) {
+    // 并发防护：提交前校验目标位置是否仍存在（防止弹窗期间被其他人删除）
+    const currentCat = list[editingIndex.value]
+    if (!currentCat || currentCat.name !== editingOriginalName.value) {
+      ElMessage.error('该分类已被删除或修改，请关闭弹窗后刷新重试')
       showDialog.value = false
+      return
     }
-  })
+
+    const oldName = editingOriginalName.value
+    const data = { ...categoryForm }
+    list[editingIndex.value] = data
+
+    if (editingType.value === 'income') {
+      accountingStore.saveIncomeCategories()
+    } else {
+      accountingStore.saveExpenseCategories()
+    }
+
+    // 重命名时同步更新所有引用旧分类名的收支记录
+    if (oldName !== data.name) {
+      await accountingStore.renameCategoryInRecords(editingType.value, oldName, data.name)
+    }
+  } else {
+    const data = { ...categoryForm }
+    if (editingType.value === 'income') {
+      accountingStore.incomeCategories.push(data)
+      accountingStore.saveIncomeCategories()
+    } else {
+      accountingStore.expenseCategories.push(data)
+      accountingStore.saveExpenseCategories()
+    }
+  }
+
+  ElMessage.success(editingIndex.value !== null ? '编辑成功' : '添加成功')
+  showDialog.value = false
 }
 
 const handleDialogClose = () => {
   editingIndex.value = null
+  editingOriginalName.value = ''
   categoryForm.name = ''
   categoryForm.icon = 'Wallet'
   categoryForm.color = '#409eff'

@@ -10,49 +10,46 @@ const mockUsers = [
   { id: 2, username: 'user', password: '123456', name: '普通用户' }
 ]
 
-// Mock 收支记录数据
-let mockRecords = [
-  {
-    id: 1,
-    type: 'income',
-    category: '工资',
-    amount: 8000,
-    date: '2026-02-01',
-    remark: '2月工资'
-  },
-  {
-    id: 2,
-    type: 'expense',
-    category: '餐饮',
-    amount: 150,
-    date: '2026-02-02',
-    remark: '午餐'
-  },
-  {
-    id: 3,
-    type: 'expense',
-    category: '交通',
-    amount: 50,
-    date: '2026-02-03',
-    remark: '地铁费'
-  },
-  {
-    id: 4,
-    type: 'income',
-    category: '兼职',
-    amount: 500,
-    date: '2026-02-05',
-    remark: '兼职收入'
-  },
-  {
-    id: 5,
-    type: 'expense',
-    category: '购物',
-    amount: 300,
-    date: '2026-02-06',
-    remark: '日用品'
-  }
+// 种子数据模板：使用占位符 key，运行时由 categoryMap 映射为真实分类名
+const SEED_RECORDS = [
+  { key: 'income1', type: 'income', amount: 8000, date: '2026-02-01', remark: '2月工资' },
+  { key: 'expense1', type: 'expense', amount: 150, date: '2026-02-02', remark: '午餐' },
+  { key: 'expense2', type: 'expense', amount: 50, date: '2026-02-03', remark: '地铁费' },
+  { key: 'income2', type: 'income', amount: 500, date: '2026-02-05', remark: '兼职收入' },
+  { key: 'expense3', type: 'expense', amount: 300, date: '2026-02-06', remark: '日用品' }
 ]
+
+let mockRecords = []
+let nextId = 1
+
+// 初始化种子记录 —— categoryMap 由调用方传入（来自 store 当前分类列表）
+// 形如 { income: { income1: '工资', income2: '兼职' }, expense: { expense1: '餐饮', ... } }
+export const mockInitRecords = (categoryMap) => {
+  const defaultCategory = (type) => {
+    const list = type === 'income' ? categoryMap.income : categoryMap.expense
+    return Object.values(list)[0] || '其他'
+  }
+
+  mockRecords = SEED_RECORDS.map((s, i) => {
+    const typeMap = s.type === 'income' ? categoryMap.income : categoryMap.expense
+    const category = typeMap[s.key] || defaultCategory(s.type)
+    return { id: i + 1, type: s.type, category, amount: s.amount, date: s.date, remark: s.remark }
+  })
+  nextId = mockRecords.length + 1
+}
+
+// 批量更新分类名 —— 将所有引用 oldName 的记录改为 newName
+export const mockBatchUpdateCategory = async (type, oldName, newName) => {
+  await delay(300)
+  let count = 0
+  mockRecords.forEach(r => {
+    if (r.type === type && r.category === oldName) {
+      r.category = newName
+      count++
+    }
+  })
+  return { code: 200, message: '更新成功', data: { count } }
+}
 
 // 登录 Mock
 export const mockLogin = async (username, password) => {
@@ -137,7 +134,7 @@ export const mockGetRecords = async (params = {}) => {
 export const mockAddRecord = async (record) => {
   await delay(500)
   const newRecord = {
-    id: mockRecords.length + 1,
+    id: nextId++,
     ...record,
     date: record.date || new Date().toISOString().split('T')[0]
   }
