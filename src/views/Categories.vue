@@ -132,6 +132,7 @@ const activeTab = ref('income')
 const showDialog = ref(false)
 const editingIndex = ref(null)
 const editingType = ref('expense')
+const editingOldName = ref('')
 const categoryFormRef = ref(null)
 
 // 可选图标列表（不少于20个）
@@ -170,6 +171,7 @@ const handleEdit = (type, index) => {
   editingIndex.value = index
   const list = type === 'income' ? accountingStore.incomeCategories : accountingStore.expenseCategories
   const cat = list[index]
+  editingOldName.value = cat.name
   categoryForm.name = cat.name
   categoryForm.icon = cat.icon
   categoryForm.color = cat.color
@@ -196,11 +198,17 @@ const handleDelete = async (type, index) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
+    // 重新获取列表，防止弹窗期间分类已被其他操作修改
+    const currentList = type === 'income' ? accountingStore.incomeCategories : accountingStore.expenseCategories
+    const currentIndex = currentList.findIndex(c => c.name === cat.name)
+    if (currentIndex === -1) {
+      ElMessage.warning('该分类已不存在')
+      return
+    }
+    currentList.splice(currentIndex, 1)
     if (type === 'income') {
-      accountingStore.incomeCategories.splice(index, 1)
       accountingStore.saveIncomeCategories()
     } else {
-      accountingStore.expenseCategories.splice(index, 1)
       accountingStore.saveExpenseCategories()
     }
     ElMessage.success('删除成功')
@@ -211,22 +219,33 @@ const handleDelete = async (type, index) => {
 
 const handleSubmit = async () => {
   if (!categoryFormRef.value) return
-  await categoryFormRef.value.validate((valid) => {
+  await categoryFormRef.value.validate(async (valid) => {
     if (valid) {
       const data = { ...categoryForm }
-      if (editingType.value === 'income') {
-        if (editingIndex.value !== null) {
-          accountingStore.incomeCategories[editingIndex.value] = data
-        } else {
-          accountingStore.incomeCategories.push(data)
+      const list = editingType.value === 'income'
+        ? accountingStore.incomeCategories
+        : accountingStore.expenseCategories
+
+      if (editingIndex.value !== null) {
+        // 编辑模式：防止并发修改，按旧名称重新定位
+        const currentIndex = list.findIndex(c => c.name === editingOldName.value)
+        if (currentIndex === -1) {
+          ElMessage.warning('该分类已不存在，请刷新页面')
+          showDialog.value = false
+          return
         }
+        // 名称发生变化时，同步更新所有引用旧名称的记录
+        if (editingOldName.value !== data.name) {
+          await accountingStore.renameCategory(editingType.value, editingOldName.value, data.name)
+        }
+        list[currentIndex] = data
+      } else {
+        list.push(data)
+      }
+
+      if (editingType.value === 'income') {
         accountingStore.saveIncomeCategories()
       } else {
-        if (editingIndex.value !== null) {
-          accountingStore.expenseCategories[editingIndex.value] = data
-        } else {
-          accountingStore.expenseCategories.push(data)
-        }
         accountingStore.saveExpenseCategories()
       }
       ElMessage.success(editingIndex.value !== null ? '编辑成功' : '添加成功')

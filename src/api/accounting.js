@@ -3,7 +3,8 @@ import {
   mockGetRecords,
   mockAddRecord,
   mockUpdateRecord,
-  mockDeleteRecord
+  mockDeleteRecord,
+  mockUpdateRecordCategory
 } from '@/utils/mock'
 
 export const getStatistics = () => {
@@ -24,4 +25,8 @@ export const updateRecord = (id, record) => {
 
 export const deleteRecord = (id) => {
   return mockDeleteRecord(id)
+}
+
+export const updateRecordCategory = (type, oldName, newName) => {
+  return mockUpdateRecordCategory(type, oldName, newName)
 }

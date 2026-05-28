@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getStatistics, getRecords, addRecord, updateRecord, deleteRecord } from '@/api/accounting'
+import { getStatistics, getRecords, addRecord, updateRecord, deleteRecord, updateRecordCategory } from '@/api/accounting'
 
 // 默认分类
-const DEFAULT_INCOME_CATEGORIES = [
+export const DEFAULT_INCOME_CATEGORIES = [
   { name: '工资', icon: 'Wallet', color: '#67c23a' },
   { name: '奖金', icon: 'TrophyBase', color: '#e6a23c' },
   { name: '兼职', icon: 'Briefcase', color: '#409eff' },
@@ -12,7 +12,7 @@ const DEFAULT_INCOME_CATEGORIES = [
   { name: '其他', icon: 'MoreFilled', color: '#909399' }
 ]
 
-const DEFAULT_EXPENSE_CATEGORIES = [
+export const DEFAULT_EXPENSE_CATEGORIES = [
   { name: '餐饮', icon: 'Food', color: '#f56c6c' },
   { name: '交通', icon: 'Bicycle', color: '#409eff' },
   { name: '购物', icon: 'ShoppingCart', color: '#e6a23c' },
@@ -159,6 +159,25 @@ export const useAccountingStore = defineStore('accounting', () => {
     return records.value.some(r => r.type === type && r.category === categoryName)
   }
 
+  // 重命名分类并同步更新所有引用该分类的记录
+  const renameCategory = async (type, oldName, newName) => {
+    if (oldName === newName) return
+    try {
+      const res = await updateRecordCategory(type, oldName, newName)
+      if (res.code === 200) {
+        // 同步更新本地 records 缓存
+        records.value.forEach(r => {
+          if (r.type === type && r.category === oldName) {
+            r.category = newName
+          }
+        })
+        statistics.value = calculateStatistics(records.value)
+      }
+    } catch (error) {
+      ElMessage.error('更新关联记录失败')
+    }
+  }
+
   const calculateStatistics = (recordList) => {
     const totalIncome = recordList
       .filter(r => r.type === 'income')
@@ -229,6 +248,7 @@ export const useAccountingStore = defineStore('accounting', () => {
       startDate: '',
       endDate: ''
     }
+    localStorage.removeItem('accounting-records')
   }
 
   const addNewRecord = async (record) => {
@@ -284,6 +304,7 @@ export const useAccountingStore = defineStore('accounting', () => {
     getCategoriesByType,
     getCategoryInfo,
     isCategoryUsed,
+    renameCategory,
     fetchStatistics,
     fetchRecords,
     addNewRecord,
