@@ -100,7 +100,19 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="分类" prop="category">
-          <el-input v-model="recordForm.category" placeholder="请输入分类" />
+          <el-select v-model="recordForm.category" placeholder="请选择分类" style="width: 100%">
+            <el-option
+              v-for="cat in currentCategories"
+              :key="cat.id"
+              :label="cat.name"
+              :value="cat.name"
+            >
+              <div class="category-option">
+                <el-icon :style="{ color: cat.color }"><component :is="cat.icon" /></el-icon>
+                <span>{{ cat.name }}</span>
+              </div>
+            </el-option>
+          </el-select>
         </el-form-item>
         <el-form-item label="金额" prop="amount">
           <el-input-number
@@ -142,12 +154,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useAccountingStore } from '@/stores/accounting'
+import { useCategoryStore } from '@/stores/category'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 
 const accountingStore = useAccountingStore()
+const categoryStore = useCategoryStore()
 
 const loading = computed(() => accountingStore.loading)
 const submitting = ref(false)
@@ -155,6 +169,14 @@ const showAddDialog = ref(false)
 const editingRecord = ref(null)
 const recordFormRef = ref(null)
 const recordList = computed(() => accountingStore.records)
+
+const currentCategories = computed(() => {
+  return categoryStore.getCategoriesByType(recordForm.type)
+})
+
+watch(() => recordForm.type, () => {
+  recordForm.category = ''
+})
 
 const filterForm = reactive({
   type: '',
@@ -178,7 +200,7 @@ const recordForm = reactive({
 
 const recordRules = {
   type: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  category: [{ required: true, message: '请输入分类', trigger: 'blur' }],
+  category: [{ required: true, message: '请选择分类', trigger: 'change' }],
   amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
   date: [{ required: true, message: '请选择日期', trigger: 'change' }]
 }
@@ -304,5 +326,11 @@ onMounted(() => {
 .expense-text {
   color: #f56c6c;
   font-weight: 600;
+}
+
+.category-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 </style>

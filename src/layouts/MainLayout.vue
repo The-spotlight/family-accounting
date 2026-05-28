@@ -22,6 +22,14 @@
               <el-icon><List /></el-icon>
               <span>明细</span>
             </el-menu-item>
+            <el-menu-item index="/budget">
+              <el-icon><Coin /></el-icon>
+              <span>预算</span>
+            </el-menu-item>
+            <el-menu-item index="/category">
+              <el-icon><Menu /></el-icon>
+              <span>分类</span>
+            </el-menu-item>
           </el-menu>
           <div class="user-info">
             <el-dropdown @command="handleCommand">
@@ -58,6 +66,8 @@ import {
   Wallet,
   HomeFilled,
   List,
+  Coin,
+  Menu,
   User,
   ArrowDown
 } from '@element-plus/icons-vue'
