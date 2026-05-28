@@ -21,16 +21,23 @@ export const useAccountingStore = defineStore('accounting', () => {
     endDate: ''
   })
 
-  const calculateStatistics = (recordList) => {
-    const totalIncome = recordList
+  const calculateStatistics = (recordList, targetMonth) => {
+    const now = new Date()
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+    const list = targetMonth
+      ? recordList.filter(r => r.date.substring(0, 7) === targetMonth)
+      : recordList.filter(r => r.date.substring(0, 7) === currentMonth)
+
+    const totalIncome = list
       .filter(r => r.type === 'income')
       .reduce((sum, r) => sum + r.amount, 0)
-    const totalExpense = recordList
+    const totalExpense = list
       .filter(r => r.type === 'expense')
       .reduce((sum, r) => sum + r.amount, 0)
-    const incomeCount = recordList.filter(r => r.type === 'income').length
-    const expenseCount = recordList.filter(r => r.type === 'expense').length
-    
+    const incomeCount = list.filter(r => r.type === 'income').length
+    const expenseCount = list.filter(r => r.type === 'expense').length
+
     return {
       totalIncome,
       totalExpense,
@@ -62,6 +69,7 @@ export const useAccountingStore = defineStore('accounting', () => {
       const res = await getRecords(mergedParams)
       if (res.code === 200) {
         records.value = res.data.list.sort((a, b) => new Date(b.date) - new Date(a.date))
+        // 统计当月数据
         statistics.value = calculateStatistics(records.value)
         filterState.value = {
           type: mergedParams.type,
@@ -129,6 +137,10 @@ export const useAccountingStore = defineStore('accounting', () => {
     }
   }
 
+  const getMonthlyStats = (recordList, month) => {
+    return calculateStatistics(recordList, month)
+  }
+
   return {
     statistics,
     records,
@@ -139,6 +151,8 @@ export const useAccountingStore = defineStore('accounting', () => {
     addNewRecord,
     updateExistingRecord,
     deleteExistingRecord,
-    reset
+    reset,
+    getMonthlyStats,
+    calculateStatistics
   }
 })
