@@ -3,7 +3,11 @@
     <h2 class="page-title">收支统计</h2>
 
     <div v-loading="loading" class="statistics-grid">
-      <el-card class="stat-card income-card" shadow="hover">
+      <el-card
+        class="stat-card income-card"
+        shadow="hover"
+        :class="{ 'over-budget': incomeBudgetRate > 100 && budgetStore.incomeBudget > 0 }"
+      >
         <div class="stat-content">
           <div class="stat-icon income-icon">
             <el-icon><Money /></el-icon>
@@ -13,9 +17,23 @@
             <div class="stat-value income-value">¥{{ formatMoney(statistics.totalIncome) }}</div>
           </div>
         </div>
+        <div v-if="budgetStore.incomeBudget > 0" class="budget-bar">
+          <div class="budget-label">
+            预算完成率：{{ incomeBudgetRate.toFixed(1) }}%
+          </div>
+          <el-progress
+            :percentage="Math.min(incomeBudgetRate, 100)"
+            :color="getBudgetColor(incomeBudgetRate)"
+            :stroke-width="10"
+          />
+        </div>
       </el-card>
 
-      <el-card class="stat-card expense-card" shadow="hover">
+      <el-card
+        class="stat-card expense-card"
+        shadow="hover"
+        :class="{ 'over-budget': expenseBudgetRate > 100 && budgetStore.expenseBudget > 0 }"
+      >
         <div class="stat-content">
           <div class="stat-icon expense-icon">
             <el-icon><Money /></el-icon>
@@ -24,6 +42,16 @@
             <div class="stat-label">总支出</div>
             <div class="stat-value expense-value">¥{{ formatMoney(statistics.totalExpense) }}</div>
           </div>
+        </div>
+        <div v-if="budgetStore.expenseBudget > 0" class="budget-bar">
+          <div class="budget-label">
+            预算使用率：{{ expenseBudgetRate.toFixed(1) }}%
+          </div>
+          <el-progress
+            :percentage="Math.min(expenseBudgetRate, 100)"
+            :color="getBudgetColor(expenseBudgetRate)"
+            :stroke-width="10"
+          />
         </div>
       </el-card>
 
@@ -58,6 +86,60 @@
         </div>
       </el-card>
     </div>
+
+    <!-- 月度对比 -->
+    <el-card class="month-compare" shadow="hover">
+      <template #header>
+        <span class="card-header-title">月度对比</span>
+      </template>
+      <div class="compare-summary">
+        <div class="compare-item">
+          <span class="compare-label">收入环比</span>
+          <span class="compare-value" :class="momIncome >= 0 ? 'up' : 'down'">
+            {{ momIncome >= 0 ? '+' : '' }}{{ momIncome.toFixed(1) }}%
+          </span>
+        </div>
+        <div class="compare-item">
+          <span class="compare-label">支出环比</span>
+          <span class="compare-value" :class="momExpense >= 0 ? 'up' : 'down'">
+            {{ momExpense >= 0 ? '+' : '' }}{{ momExpense.toFixed(1) }}%
+          </span>
+        </div>
+        <div class="compare-item">
+          <span class="compare-label">余额环比</span>
+          <span class="compare-value" :class="momBalance >= 0 ? 'up' : 'down'">
+            {{ momBalance >= 0 ? '+' : '' }}{{ momBalance.toFixed(1) }}%
+          </span>
+        </div>
+      </div>
+
+      <el-divider />
+
+      <div class="category-rank-compare">
+        <div class="rank-column">
+          <h4 class="rank-title">本月支出 TOP5</h4>
+          <div class="rank-list">
+            <div v-for="(item, index) in currentMonthTop5" :key="'cur-' + index" class="rank-item">
+              <span class="rank-index">{{ index + 1 }}</span>
+              <span class="rank-name">{{ item.category }}</span>
+              <span class="rank-amount">¥{{ formatMoney(item.amount) }}</span>
+            </div>
+            <el-empty v-if="currentMonthTop5.length === 0" description="本月暂无支出" :image-size="60" />
+          </div>
+        </div>
+        <div class="rank-column">
+          <h4 class="rank-title">上月支出 TOP5</h4>
+          <div class="rank-list">
+            <div v-for="(item, index) in lastMonthTop5" :key="'last-' + index" class="rank-item">
+              <span class="rank-index">{{ index + 1 }}</span>
+              <span class="rank-name">{{ item.category }}</span>
+              <span class="rank-amount">¥{{ formatMoney(item.amount) }}</span>
+            </div>
+            <el-empty v-if="lastMonthTop5.length === 0" description="上月暂无支出" :image-size="60" />
+          </div>
+        </div>
+      </div>
+    </el-card>
 
     <el-card class="recent-records" shadow="hover">
       <template #header>
@@ -94,9 +176,11 @@
 <script setup>
 import { onMounted, computed } from 'vue'
 import { useAccountingStore } from '@/stores/accounting'
+import { useBudgetStore } from '@/stores/budget'
 import { Money, Wallet, Document, ArrowRight } from '@element-plus/icons-vue'
 
 const accountingStore = useAccountingStore()
+const budgetStore = useBudgetStore()
 
 const loading = computed(() => accountingStore.loading)
 const statistics = computed(() => accountingStore.statistics)
@@ -105,6 +189,77 @@ const recentRecords = computed(() => accountingStore.records.slice(0, 5))
 const formatMoney = (amount) => {
   return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
+
+// 预算使用率
+const incomeBudgetRate = computed(() => {
+  if (budgetStore.incomeBudget <= 0) return 0
+  return (statistics.value.totalIncome / budgetStore.incomeBudget) * 100
+})
+
+const expenseBudgetRate = computed(() => {
+  if (budgetStore.expenseBudget <= 0) return 0
+  return (statistics.value.totalExpense / budgetStore.expenseBudget) * 100
+})
+
+const getBudgetColor = (rate) => {
+  if (rate > 100) return '#f56c6c'
+  if (rate >= 80) return '#e6a23c'
+  return '#67c23a'
+}
+
+// 月度对比
+const now = new Date()
+const currentYear = now.getFullYear()
+const currentMonth = now.getMonth() // 0-indexed
+
+const getMonthStr = (year, month) => {
+  return `${year}-${String(month + 1).padStart(2, '0')}`
+}
+
+const currentMonthStr = getMonthStr(currentYear, currentMonth)
+const lastMonthDate = new Date(currentYear, currentMonth - 1, 1)
+const lastMonthStr = getMonthStr(lastMonthDate.getFullYear(), lastMonthDate.getMonth())
+
+const filterByMonth = (records, monthStr) => {
+  return records.filter(r => r.date && r.date.startsWith(monthStr))
+}
+
+const calcStats = (records) => {
+  const income = records.filter(r => r.type === 'income').reduce((s, r) => s + r.amount, 0)
+  const expense = records.filter(r => r.type === 'expense').reduce((s, r) => s + r.amount, 0)
+  return { income, expense, balance: income - expense }
+}
+
+const calcMom = (current, last) => {
+  if (last === 0) return current === 0 ? 0 : 100
+  return ((current - last) / Math.abs(last)) * 100
+}
+
+const currentMonthRecords = computed(() => filterByMonth(accountingStore.records, currentMonthStr))
+const lastMonthRecords = computed(() => filterByMonth(accountingStore.records, lastMonthStr))
+
+const currentStats = computed(() => calcStats(currentMonthRecords.value))
+const lastStats = computed(() => calcStats(lastMonthRecords.value))
+
+const momIncome = computed(() => calcMom(currentStats.value.income, lastStats.value.income))
+const momExpense = computed(() => calcMom(currentStats.value.expense, lastStats.value.expense))
+const momBalance = computed(() => calcMom(currentStats.value.balance, lastStats.value.balance))
+
+// 分类排行
+const getCategoryRanking = (records) => {
+  const expenseRecords = records.filter(r => r.type === 'expense')
+  const map = {}
+  expenseRecords.forEach(r => {
+    map[r.category] = (map[r.category] || 0) + r.amount
+  })
+  return Object.entries(map)
+    .map(([category, amount]) => ({ category, amount }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 5)
+}
+
+const currentMonthTop5 = computed(() => getCategoryRanking(currentMonthRecords.value))
+const lastMonthTop5 = computed(() => getCategoryRanking(lastMonthRecords.value))
 
 onMounted(() => {
   accountingStore.fetchRecords()
@@ -136,6 +291,10 @@ onMounted(() => {
 
   &:hover {
     transform: translateY(-4px);
+  }
+
+  &.over-budget {
+    border: 2px solid #f56c6c;
   }
 
   .stat-content {
@@ -202,6 +361,117 @@ onMounted(() => {
       font-size: 12px;
       color: #c0c4cc;
     }
+  }
+}
+
+.budget-bar {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+
+  .budget-label {
+    font-size: 12px;
+    color: #909399;
+    margin-bottom: 6px;
+  }
+}
+
+.month-compare {
+  border-radius: 12px;
+  margin-bottom: 24px;
+
+  .card-header-title {
+    font-weight: 600;
+  }
+}
+
+.compare-summary {
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.compare-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .compare-label {
+    font-size: 13px;
+    color: #909399;
+  }
+
+  .compare-value {
+    font-size: 22px;
+    font-weight: 600;
+
+    &.up {
+      color: #f56c6c;
+    }
+
+    &.down {
+      color: #67c23a;
+    }
+  }
+}
+
+.category-rank-compare {
+  display: flex;
+  gap: 40px;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+  }
+}
+
+.rank-column {
+  flex: 1;
+
+  .rank-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 12px;
+  }
+}
+
+.rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 6px;
+
+  .rank-index {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #409eff;
+    color: #fff;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+  }
+
+  .rank-name {
+    flex: 1;
+    font-size: 14px;
+    color: #303133;
+  }
+
+  .rank-amount {
+    font-size: 14px;
+    font-weight: 600;
+    color: #f56c6c;
   }
 }
 

@@ -22,6 +22,14 @@
               <el-icon><List /></el-icon>
               <span>明细</span>
             </el-menu-item>
+            <el-menu-item index="/budget">
+              <el-icon><Coin /></el-icon>
+              <span>预算</span>
+            </el-menu-item>
+            <el-menu-item index="/category">
+              <el-icon><Grid /></el-icon>
+              <span>分类</span>
+            </el-menu-item>
           </el-menu>
           <div class="user-info">
             <el-dropdown @command="handleCommand">
@@ -59,7 +67,9 @@ import {
   HomeFilled,
   List,
   User,
-  ArrowDown
+  ArrowDown,
+  Coin,
+  Grid
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

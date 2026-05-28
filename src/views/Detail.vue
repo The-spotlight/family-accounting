@@ -100,7 +100,24 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="分类" prop="category">
-          <el-input v-model="recordForm.category" placeholder="请输入分类" />
+          <el-select v-model="recordForm.category" placeholder="请选择分类" style="width: 100%">
+            <el-option
+              v-for="cat in currentCategories"
+              :key="cat.id"
+              :label="cat.name"
+              :value="cat.name"
+            >
+              <div style="display: flex; align-items: center; gap: 8px">
+                <span
+                  style="width: 20px; height: 20px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 12px;"
+                  :style="{ backgroundColor: cat.color }"
+                >
+                  <el-icon><component :is="cat.icon" /></el-icon>
+                </span>
+                <span>{{ cat.name }}</span>
+              </div>
+            </el-option>
+          </el-select>
         </el-form-item>
         <el-form-item label="金额" prop="amount">
           <el-input-number
@@ -144,10 +161,18 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useAccountingStore } from '@/stores/accounting'
+import { useCategoryStore } from '@/stores/category'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 
 const accountingStore = useAccountingStore()
+const categoryStore = useCategoryStore()
+
+const currentCategories = computed(() => {
+  return recordForm.type === 'income'
+    ? categoryStore.incomeCategories
+    : categoryStore.expenseCategories
+})
 
 const loading = computed(() => accountingStore.loading)
 const submitting = ref(false)
@@ -178,7 +203,7 @@ const recordForm = reactive({
 
 const recordRules = {
   type: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  category: [{ required: true, message: '请输入分类', trigger: 'blur' }],
+  category: [{ required: true, message: '请选择分类', trigger: 'change' }],
   amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
   date: [{ required: true, message: '请选择日期', trigger: 'change' }]
 }
