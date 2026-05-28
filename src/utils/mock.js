@@ -1,5 +1,6 @@
 // Mock 数据服务
 import { ElMessage } from 'element-plus'
+import { DEFAULT_INCOME_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES } from '@/stores/accounting'
 
 // 模拟延迟
 const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms))
@@ -10,49 +11,23 @@ const mockUsers = [
   { id: 2, username: 'user', password: '123456', name: '普通用户' }
 ]
 
-// Mock 收支记录数据
-let mockRecords = [
-  {
-    id: 1,
-    type: 'income',
-    category: '工资',
-    amount: 8000,
-    date: '2026-02-01',
-    remark: '2月工资'
-  },
-  {
-    id: 2,
-    type: 'expense',
-    category: '餐饮',
-    amount: 150,
-    date: '2026-02-02',
-    remark: '午餐'
-  },
-  {
-    id: 3,
-    type: 'expense',
-    category: '交通',
-    amount: 50,
-    date: '2026-02-03',
-    remark: '地铁费'
-  },
-  {
-    id: 4,
-    type: 'income',
-    category: '兼职',
-    amount: 500,
-    date: '2026-02-05',
-    remark: '兼职收入'
-  },
-  {
-    id: 5,
-    type: 'expense',
-    category: '购物',
-    amount: 300,
-    date: '2026-02-06',
-    remark: '日用品'
-  }
+// 种子数据 - 从默认分类中动态读取分类名
+const SEED_RECORDS = [
+  { id: 1, type: 'income', category: DEFAULT_INCOME_CATEGORIES[0].name, amount: 8000, date: '2026-02-01', remark: '2月工资' },
+  { id: 2, type: 'expense', category: DEFAULT_EXPENSE_CATEGORIES[0].name, amount: 150, date: '2026-02-02', remark: '午餐' },
+  { id: 3, type: 'expense', category: DEFAULT_EXPENSE_CATEGORIES[1].name, amount: 50, date: '2026-02-03', remark: '地铁费' },
+  { id: 4, type: 'income', category: DEFAULT_INCOME_CATEGORIES[2].name, amount: 500, date: '2026-02-05', remark: '兼职收入' },
+  { id: 5, type: 'expense', category: DEFAULT_EXPENSE_CATEGORIES[2].name, amount: 300, date: '2026-02-06', remark: '日用品' }
 ]
+
+// 从 localStorage 恢复，为空时用种子数据初始化
+const STORAGE_KEY = 'accounting-records'
+let mockRecords = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || JSON.parse(JSON.stringify(SEED_RECORDS))
+
+// 持久化到 localStorage
+const saveMockRecords = () => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(mockRecords))
+}
 
 // 登录 Mock
 export const mockLogin = async (username, password) => {
@@ -142,6 +117,7 @@ export const mockAddRecord = async (record) => {
     date: record.date || new Date().toISOString().split('T')[0]
   }
   mockRecords.push(newRecord)
+  saveMockRecords()
   return {
     code: 200,
     message: '添加成功',
@@ -155,6 +131,7 @@ export const mockUpdateRecord = async (id, record) => {
   const index = mockRecords.findIndex(r => r.id === id)
   if (index !== -1) {
     mockRecords[index] = { ...mockRecords[index], ...record }
+    saveMockRecords()
     return {
       code: 200,
       message: '更新成功',
@@ -174,6 +151,7 @@ export const mockDeleteRecord = async (id) => {
   const index = mockRecords.findIndex(r => r.id === id)
   if (index !== -1) {
     mockRecords.splice(index, 1)
+    saveMockRecords()
     return {
       code: 200,
       message: '删除成功'
@@ -183,5 +161,23 @@ export const mockDeleteRecord = async (id) => {
       code: 404,
       message: '记录不存在'
     }
+  }
+}
+
+// 批量更新记录分类名 Mock
+export const mockUpdateRecordCategory = async (type, oldName, newName) => {
+  await delay(300)
+  let count = 0
+  mockRecords.forEach(r => {
+    if (r.type === type && r.category === oldName) {
+      r.category = newName
+      count++
+    }
+  })
+  saveMockRecords()
+  return {
+    code: 200,
+    message: `已更新${count}条记录`,
+    data: { count }
   }
 }
