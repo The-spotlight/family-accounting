@@ -132,6 +132,7 @@ const activeTab = ref('income')
 const showDialog = ref(false)
 const editingIndex = ref(null)
 const editingType = ref('expense')
+const editingOldName = ref('')
 const categoryFormRef = ref(null)
 
 // 可选图标列表（不少于20个）
@@ -159,6 +160,7 @@ const categoryRules = {
 const handleAdd = (type) => {
   editingType.value = type
   editingIndex.value = null
+  editingOldName.value = ''
   categoryForm.name = ''
   categoryForm.icon = 'Wallet'
   categoryForm.color = '#409eff'
@@ -170,6 +172,7 @@ const handleEdit = (type, index) => {
   editingIndex.value = index
   const list = type === 'income' ? accountingStore.incomeCategories : accountingStore.expenseCategories
   const cat = list[index]
+  editingOldName.value = cat.name
   categoryForm.name = cat.name
   categoryForm.icon = cat.icon
   categoryForm.color = cat.color
@@ -211,32 +214,35 @@ const handleDelete = async (type, index) => {
 
 const handleSubmit = async () => {
   if (!categoryFormRef.value) return
-  await categoryFormRef.value.validate((valid) => {
+  await categoryFormRef.value.validate(async (valid) => {
     if (valid) {
       const data = { ...categoryForm }
-      if (editingType.value === 'income') {
-        if (editingIndex.value !== null) {
-          accountingStore.incomeCategories[editingIndex.value] = data
-        } else {
-          accountingStore.incomeCategories.push(data)
+      if (editingIndex.value !== null) {
+        try {
+          await accountingStore.updateCategory(editingType.value, editingIndex.value, data, editingOldName.value)
+          ElMessage.success('编辑成功')
+          showDialog.value = false
+        } catch (e) {
+          ElMessage.error(e.message || '编辑失败')
         }
-        accountingStore.saveIncomeCategories()
       } else {
-        if (editingIndex.value !== null) {
-          accountingStore.expenseCategories[editingIndex.value] = data
+        if (editingType.value === 'income') {
+          accountingStore.incomeCategories.push(data)
+          accountingStore.saveIncomeCategories()
         } else {
           accountingStore.expenseCategories.push(data)
+          accountingStore.saveExpenseCategories()
         }
-        accountingStore.saveExpenseCategories()
+        ElMessage.success('添加成功')
+        showDialog.value = false
       }
-      ElMessage.success(editingIndex.value !== null ? '编辑成功' : '添加成功')
-      showDialog.value = false
     }
   })
 }
 
 const handleDialogClose = () => {
   editingIndex.value = null
+  editingOldName.value = ''
   categoryForm.name = ''
   categoryForm.icon = 'Wallet'
   categoryForm.color = '#409eff'

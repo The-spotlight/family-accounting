@@ -3,7 +3,9 @@ import {
   mockGetRecords,
   mockAddRecord,
   mockUpdateRecord,
-  mockDeleteRecord
+  mockDeleteRecord,
+  mockRenameCategory,
+  mockClearRecords
 } from '@/utils/mock'
 
 export const getStatistics = () => {
@@ -24,4 +26,12 @@ export const updateRecord = (id, record) => {
 
 export const deleteRecord = (id) => {
   return mockDeleteRecord(id)
+}
+
+export const renameCategory = (type, oldName, newName) => {
+  return Promise.resolve(mockRenameCategory(type, oldName, newName))
+}
+
+export const clearRecords = () => {
+  mockClearRecords()
 }

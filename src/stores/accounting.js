@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getStatistics, getRecords, addRecord, updateRecord, deleteRecord } from '@/api/accounting'
+import { getStatistics, getRecords, addRecord, updateRecord, deleteRecord, renameCategory, clearRecords } from '@/api/accounting'
 
 // 默认分类
-const DEFAULT_INCOME_CATEGORIES = [
+export const DEFAULT_INCOME_CATEGORIES = [
   { name: '工资', icon: 'Wallet', color: '#67c23a' },
   { name: '奖金', icon: 'TrophyBase', color: '#e6a23c' },
   { name: '兼职', icon: 'Briefcase', color: '#409eff' },
@@ -12,7 +12,7 @@ const DEFAULT_INCOME_CATEGORIES = [
   { name: '其他', icon: 'MoreFilled', color: '#909399' }
 ]
 
-const DEFAULT_EXPENSE_CATEGORIES = [
+export const DEFAULT_EXPENSE_CATEGORIES = [
   { name: '餐饮', icon: 'Food', color: '#f56c6c' },
   { name: '交通', icon: 'Bicycle', color: '#409eff' },
   { name: '购物', icon: 'ShoppingCart', color: '#e6a23c' },
@@ -159,6 +159,31 @@ export const useAccountingStore = defineStore('accounting', () => {
     return records.value.some(r => r.type === type && r.category === categoryName)
   }
 
+  // 更新分类（含重命名传播 + 过期索引防护）
+  // oldName: 编辑前的分类名称，用于比对是否重命名以及校验索引是否过期
+  const updateCategory = async (type, index, data, oldName) => {
+    const list = type === 'income' ? incomeCategories.value : expenseCategories.value
+
+    // 防并发：校验索引处分类名称是否仍与编辑时一致
+    if (!list[index] || list[index].name !== oldName) {
+      throw new Error('该分类已被其他操作修改或删除，请刷新后重试')
+    }
+
+    // 名称变更 → 同步更新所有引用旧名称的记录
+    if (data.name !== oldName) {
+      await renameCategory(type, oldName, data.name)
+      await fetchRecords(filterState.value)
+    }
+
+    // 更新分类本身
+    list[index] = { ...data }
+    if (type === 'income') {
+      saveIncomeCategories()
+    } else {
+      saveExpenseCategories()
+    }
+  }
+
   const calculateStatistics = (recordList) => {
     const totalIncome = recordList
       .filter(r => r.type === 'income')
@@ -229,6 +254,7 @@ export const useAccountingStore = defineStore('accounting', () => {
       startDate: '',
       endDate: ''
     }
+    clearRecords()
   }
 
   const addNewRecord = async (record) => {
@@ -284,6 +310,7 @@ export const useAccountingStore = defineStore('accounting', () => {
     getCategoriesByType,
     getCategoryInfo,
     isCategoryUsed,
+    updateCategory,
     fetchStatistics,
     fetchRecords,
     addNewRecord,
