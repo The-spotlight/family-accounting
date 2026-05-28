@@ -52,7 +52,20 @@
         stripe
       >
         <el-table-column prop="date" label="日期" width="120" />
-        <el-table-column prop="category" label="分类" width="120" />
+        <el-table-column label="分类" width="140">
+          <template #default="{ row }">
+            <div class="category-cell">
+              <span
+                v-if="getCatInfo(row.type, row.category)"
+                class="cat-icon-small"
+                :style="{ background: getCatInfo(row.type, row.category).color }"
+              >
+                <el-icon :size="12"><component :is="getCatInfo(row.type, row.category).icon" /></el-icon>
+              </span>
+              <span>{{ row.category }}</span>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column label="类型" width="100">
           <template #default="{ row }">
             <el-tag :type="row.type === 'income' ? 'success' : 'danger'">
@@ -94,13 +107,27 @@
         label-width="80px"
       >
         <el-form-item label="类型" prop="type">
-          <el-radio-group v-model="recordForm.type">
+          <el-radio-group v-model="recordForm.type" @change="handleTypeChange">
             <el-radio label="income">收入</el-radio>
             <el-radio label="expense">支出</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="分类" prop="category">
-          <el-input v-model="recordForm.category" placeholder="请输入分类" />
+          <el-select v-model="recordForm.category" placeholder="请选择分类" style="width: 100%">
+            <el-option
+              v-for="cat in currentCategoryList"
+              :key="cat.name"
+              :label="cat.name"
+              :value="cat.name"
+            >
+              <div class="category-option">
+                <span class="cat-icon-opt" :style="{ background: cat.color }">
+                  <el-icon :size="14"><component :is="cat.icon" /></el-icon>
+                </span>
+                <span>{{ cat.name }}</span>
+              </div>
+            </el-option>
+          </el-select>
         </el-form-item>
         <el-form-item label="金额" prop="amount">
           <el-input-number
@@ -178,9 +205,23 @@ const recordForm = reactive({
 
 const recordRules = {
   type: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  category: [{ required: true, message: '请输入分类', trigger: 'blur' }],
+  category: [{ required: true, message: '请选择分类', trigger: 'change' }],
   amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
   date: [{ required: true, message: '请选择日期', trigger: 'change' }]
+}
+
+// 根据当前类型获取分类列表
+const currentCategoryList = computed(() => {
+  return accountingStore.getCategoriesByType(recordForm.type)
+})
+
+// 切换类型时重置分类
+const handleTypeChange = () => {
+  recordForm.category = ''
+}
+
+const getCatInfo = (type, name) => {
+  return accountingStore.getCategoryInfo(type, name)
 }
 
 const formatMoney = (amount) => {
@@ -304,5 +345,39 @@ onMounted(() => {
 .expense-text {
   color: #f56c6c;
   font-weight: 600;
+}
+
+.category-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cat-icon-small {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.category-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cat-icon-opt {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
 }
 </style>

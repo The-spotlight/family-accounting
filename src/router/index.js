@@ -23,6 +23,16 @@ const routes = [
         path: 'detail',
         name: 'Detail',
         component: () => import('@/views/Detail.vue')
+      },
+      {
+        path: 'budget',
+        name: 'Budget',
+        component: () => import('@/views/Budget.vue')
+      },
+      {
+        path: 'categories',
+        name: 'Categories',
+        component: () => import('@/views/Categories.vue')
       }
     ]
   }
@@ -36,10 +46,10 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
-  
+
   const token = localStorage.getItem('token')
   const isLoggedIn = !!token
-  
+
   if (to.meta.requiresAuth && !isLoggedIn) {
     next('/login')
   } else if (to.path === '/login' && isLoggedIn) {
