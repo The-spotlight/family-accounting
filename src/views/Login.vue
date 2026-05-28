@@ -102,9 +102,11 @@ const handleLogin = async () => {
           router.push('/')
         } else {
           ElMessage.error(res.message || '登录失败')
+          loginForm.password = ''
         }
       } catch (error) {
         ElMessage.error(error.message || '登录失败')
+        loginForm.password = ''
       } finally {
         loading.value = false
       }
