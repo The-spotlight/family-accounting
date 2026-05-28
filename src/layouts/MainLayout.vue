@@ -22,6 +22,14 @@
               <el-icon><List /></el-icon>
               <span>明细</span>
             </el-menu-item>
+            <el-menu-item index="/budget">
+              <el-icon><Coin /></el-icon>
+              <span>预算</span>
+            </el-menu-item>
+            <el-menu-item index="/category">
+              <el-icon><Menu /></el-icon>
+              <span>分类</span>
+            </el-menu-item>
           </el-menu>
           <div class="user-info">
             <el-dropdown @command="handleCommand">
@@ -52,18 +60,22 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useAccountingStore } from '@/stores/accounting'
 import { ElMessageBox } from 'element-plus'
 import {
   Wallet,
   HomeFilled,
   List,
   User,
-  ArrowDown
+  ArrowDown,
+  Coin,
+  Menu
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const accountingStore = useAccountingStore()
 
 const activeMenu = computed(() => route.path)
 
@@ -80,6 +92,7 @@ const handleCommand = async (command) => {
         type: 'warning'
       })
       userStore.logout()
+      accountingStore.reset()
       router.push('/login')
     } catch {
       // 用户取消

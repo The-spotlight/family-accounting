@@ -10,47 +10,87 @@ const mockUsers = [
   { id: 2, username: 'user', password: '123456', name: '普通用户' }
 ]
 
-// Mock 收支记录数据
+// 获取当前所有记录（供其他模块检查引用）
+export const getMockRecords = () => mockRecords
+
+// Mock 收支记录数据（包含当月和上月数据用于对比）
+const now = new Date()
+const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+const lastMonthStr = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`
+
 let mockRecords = [
   {
     id: 1,
     type: 'income',
     category: '工资',
     amount: 8000,
-    date: '2026-02-01',
-    remark: '2月工资'
+    date: `${lastMonthStr}-01`,
+    remark: '上月工资'
   },
   {
     id: 2,
     type: 'expense',
     category: '餐饮',
-    amount: 150,
-    date: '2026-02-02',
-    remark: '午餐'
+    amount: 800,
+    date: `${lastMonthStr}-05`,
+    remark: '上月餐饮'
   },
   {
     id: 3,
     type: 'expense',
     category: '交通',
-    amount: 50,
-    date: '2026-02-03',
-    remark: '地铁费'
+    amount: 200,
+    date: `${lastMonthStr}-10`,
+    remark: '上月交通'
   },
   {
     id: 4,
-    type: 'income',
-    category: '兼职',
+    type: 'expense',
+    category: '购物',
     amount: 500,
-    date: '2026-02-05',
-    remark: '兼职收入'
+    date: `${lastMonthStr}-15`,
+    remark: '上月购物'
   },
   {
     id: 5,
+    type: 'income',
+    category: '工资',
+    amount: 8500,
+    date: `${thisMonth}-01`,
+    remark: '本月工资'
+  },
+  {
+    id: 6,
     type: 'expense',
-    category: '购物',
+    category: '餐饮',
+    amount: 600,
+    date: `${thisMonth}-05`,
+    remark: '本月餐饮'
+  },
+  {
+    id: 7,
+    type: 'expense',
+    category: '交通',
+    amount: 150,
+    date: `${thisMonth}-08`,
+    remark: '本月交通'
+  },
+  {
+    id: 8,
+    type: 'income',
+    category: '兼职',
+    amount: 800,
+    date: `${thisMonth}-10`,
+    remark: '本月兼职'
+  },
+  {
+    id: 9,
+    type: 'expense',
+    category: '娱乐',
     amount: 300,
-    date: '2026-02-06',
-    remark: '日用品'
+    date: `${thisMonth}-12`,
+    remark: '本月娱乐'
   }
 ]
 
