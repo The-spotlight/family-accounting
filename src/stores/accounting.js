@@ -1,27 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getStatistics, getRecords, addRecord, updateRecord, deleteRecord } from '@/api/accounting'
-
-// 默认分类
-const DEFAULT_INCOME_CATEGORIES = [
-  { name: '工资', icon: 'Wallet', color: '#67c23a' },
-  { name: '奖金', icon: 'TrophyBase', color: '#e6a23c' },
-  { name: '兼职', icon: 'Briefcase', color: '#409eff' },
-  { name: '理财', icon: 'TrendCharts', color: '#f56c6c' },
-  { name: '其他', icon: 'MoreFilled', color: '#909399' }
-]
-
-const DEFAULT_EXPENSE_CATEGORIES = [
-  { name: '餐饮', icon: 'Food', color: '#f56c6c' },
-  { name: '交通', icon: 'Bicycle', color: '#409eff' },
-  { name: '购物', icon: 'ShoppingCart', color: '#e6a23c' },
-  { name: '住房', icon: 'House', color: '#67c23a' },
-  { name: '娱乐', icon: 'Headset', color: '#9b59b6' },
-  { name: '医疗', icon: 'FirstAidKit', color: '#f56c6c' },
-  { name: '教育', icon: 'Reading', color: '#409eff' },
-  { name: '其他', icon: 'MoreFilled', color: '#909399' }
-]
+import { getStatistics, getRecords, addRecord, updateRecord, deleteRecord, updateCategoryInRecords } from '@/api/accounting'
+import { DEFAULT_INCOME_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES, RECORDS_STORAGE_KEY } from '@/utils/constants'
 
 export const useAccountingStore = defineStore('accounting', () => {
   const statistics = ref({
@@ -159,6 +140,21 @@ export const useAccountingStore = defineStore('accounting', () => {
     return records.value.some(r => r.type === type && r.category === categoryName)
   }
 
+  // 批量更新记录中引用旧分类名的字段（编辑分类重命名时调用）
+  const updateRecordCategoryName = async (type, oldName, newName) => {
+    try {
+      const res = await updateCategoryInRecords(type, oldName, newName)
+      if (res.code === 200) {
+        // 刷新记录列表以反映更新
+        await fetchRecords(filterState.value)
+      }
+      return res
+    } catch (error) {
+      console.error('更新记录分类名失败:', error)
+      return { code: 500, message: '更新失败' }
+    }
+  }
+
   const calculateStatistics = (recordList) => {
     const totalIncome = recordList
       .filter(r => r.type === 'income')
@@ -223,6 +219,7 @@ export const useAccountingStore = defineStore('accounting', () => {
       expenseCount: 0
     }
     records.value = []
+    localStorage.removeItem(RECORDS_STORAGE_KEY)
     loading.value = false
     filterState.value = {
       type: '',
@@ -284,6 +281,7 @@ export const useAccountingStore = defineStore('accounting', () => {
     getCategoriesByType,
     getCategoryInfo,
     isCategoryUsed,
+    updateRecordCategoryName,
     fetchStatistics,
     fetchRecords,
     addNewRecord,

@@ -132,6 +132,7 @@ const activeTab = ref('income')
 const showDialog = ref(false)
 const editingIndex = ref(null)
 const editingType = ref('expense')
+const editingOriginalName = ref('') // 编辑时保存的原始分类名，用于检测重命名
 const categoryFormRef = ref(null)
 
 // 可选图标列表（不少于20个）
@@ -173,6 +174,7 @@ const handleEdit = (type, index) => {
   categoryForm.name = cat.name
   categoryForm.icon = cat.icon
   categoryForm.color = cat.color
+  editingOriginalName.value = cat.name // 记录原始名称用于重命名检测
   showDialog.value = true
 }
 
@@ -211,24 +213,62 @@ const handleDelete = async (type, index) => {
 
 const handleSubmit = async () => {
   if (!categoryFormRef.value) return
-  await categoryFormRef.value.validate((valid) => {
+  await categoryFormRef.value.validate(async (valid) => {
     if (valid) {
       const data = { ...categoryForm }
-      if (editingType.value === 'income') {
-        if (editingIndex.value !== null) {
-          accountingStore.incomeCategories[editingIndex.value] = data
-        } else {
-          accountingStore.incomeCategories.push(data)
+      const list = editingType.value === 'income'
+        ? accountingStore.incomeCategories
+        : accountingStore.expenseCategories
+
+      if (editingIndex.value !== null) {
+        // ---- 编辑模式 ----
+
+        // 并发删除保护：如果编辑弹窗打开期间该分类被其他人删除了，index 越界则中止
+        if (editingIndex.value >= list.length) {
+          ElMessage.error('该分类已被删除，请刷新页面后重试')
+          showDialog.value = false
+          return
         }
+
+        // 重名检查（排除自身）
+        const duplicate = list.some(
+          (c, i) => i !== editingIndex.value && c.name === data.name
+        )
+        if (duplicate) {
+          ElMessage.error(`分类"${data.name}"已存在，请使用其他名称`)
+          return
+        }
+
+        // 检测是否改过名称；若改过则同步更新所有引用旧名称的收支记录
+        const nameChanged = data.name !== editingOriginalName.value
+        if (nameChanged) {
+          await accountingStore.updateRecordCategoryName(
+            editingType.value,
+            editingOriginalName.value,
+            data.name
+          )
+        }
+
+        list[editingIndex.value] = data
+      } else {
+        // ---- 新增模式 ----
+
+        // 重名检查
+        const duplicate = list.some(c => c.name === data.name)
+        if (duplicate) {
+          ElMessage.error(`分类"${data.name}"已存在，请使用其他名称`)
+          return
+        }
+
+        list.push(data)
+      }
+
+      if (editingType.value === 'income') {
         accountingStore.saveIncomeCategories()
       } else {
-        if (editingIndex.value !== null) {
-          accountingStore.expenseCategories[editingIndex.value] = data
-        } else {
-          accountingStore.expenseCategories.push(data)
-        }
         accountingStore.saveExpenseCategories()
       }
+
       ElMessage.success(editingIndex.value !== null ? '编辑成功' : '添加成功')
       showDialog.value = false
     }
@@ -237,6 +277,7 @@ const handleSubmit = async () => {
 
 const handleDialogClose = () => {
   editingIndex.value = null
+  editingOriginalName.value = ''
   categoryForm.name = ''
   categoryForm.icon = 'Wallet'
   categoryForm.color = '#409eff'
